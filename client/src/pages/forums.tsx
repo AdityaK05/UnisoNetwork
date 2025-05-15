@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Link } from 'wouter';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Search, MessageSquare, ThumbsUp, Clock, PenLine } from 'lucide-react';
+import { Search, MessageSquare, ThumbsUp, PenLine } from 'lucide-react';
+import MainLayout from '@/components/layout/MainLayout';
 
 // Mock data for forum threads
 const FORUM_THREADS = [
