@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Zap, Users, Calendar, MessageSquare, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
@@ -23,31 +23,52 @@ export default function Navbar() {
   };
 
   return (
-    <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${isScrolled ? "bg-white shadow-md" : "bg-white/80 backdrop-blur-sm"}`}>
+    <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${isScrolled ? "bg-white/95 backdrop-blur-md shadow-lg" : "bg-transparent"}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between h-20">
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0 flex items-center">
-              <span className="text-2xl font-bold text-primary font-poppins">UNiSO</span>
+              <Zap className="h-8 w-8 text-primary mr-2" />
+              <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-card-1 font-poppins">UNiSO</span>
             </Link>
           </div>
           
           {/* Desktop Menu */}
-          <div className="hidden md:ml-6 md:flex md:items-center md:space-x-6">
-            <a href="#features" className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors">
-              Features
+          <div className="hidden md:ml-6 md:flex md:items-center md:space-x-8">
+            <a 
+              href="#features" 
+              className="flex items-center text-gray-700 hover:text-primary px-3 py-2 rounded-full text-sm font-medium transition-colors hover:bg-purple-50"
+            >
+              <Users className="h-4 w-4 mr-1.5" />
+              Community
             </a>
-            <a href="#testimonials" className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors">
-              Testimonials
+            <a 
+              href="#events" 
+              className="flex items-center text-gray-700 hover:text-secondary px-3 py-2 rounded-full text-sm font-medium transition-colors hover:bg-teal-50"
+            >
+              <Calendar className="h-4 w-4 mr-1.5" />
+              Events
             </a>
-            <a href="#contact" className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors">
-              Contact
+            <a 
+              href="#testimonials" 
+              className="flex items-center text-gray-700 hover:text-accent px-3 py-2 rounded-full text-sm font-medium transition-colors hover:bg-pink-50"
+            >
+              <MessageSquare className="h-4 w-4 mr-1.5" />
+              Real Talk
             </a>
-            <a href="#" className="text-gray-600 hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors">
-              About
+            <a 
+              href="#jobs" 
+              className="flex items-center text-gray-700 hover:text-lime px-3 py-2 rounded-full text-sm font-medium transition-colors hover:bg-lime-50"
+            >
+              <Briefcase className="h-4 w-4 mr-1.5" />
+              Jobs
             </a>
-            <Button variant="default" size="sm" className="ml-2">
-              Sign In
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="ml-2 rounded-full pulse-glow font-medium bg-primary hover:bg-primary/90 transition-all duration-300 px-6"
+            >
+              Join Now
             </Button>
           </div>
           
@@ -55,7 +76,7 @@ export default function Navbar() {
           <div className="flex items-center md:hidden">
             <button
               type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+              className="inline-flex items-center justify-center p-2 rounded-full text-gray-700 hover:text-primary hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary transition-all"
               aria-expanded="false"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
@@ -69,38 +90,42 @@ export default function Navbar() {
       {/* Mobile menu */}
       {mobileMenuOpen && (
         <div className="md:hidden">
-          <div className="pt-2 pb-3 space-y-1 bg-white shadow-lg">
+          <div className="pt-2 pb-3 space-y-1 bg-white/95 backdrop-blur-md rounded-b-2xl shadow-lg">
             <a 
               href="#features" 
-              className="text-gray-600 hover:bg-gray-50 block px-3 py-2 rounded-md text-base font-medium"
+              className="flex items-center text-gray-700 hover:bg-purple-50 block px-5 py-3 rounded-lg mx-3 text-base font-medium"
               onClick={handleLinkClick}
             >
-              Features
+              <Users className="h-5 w-5 mr-3 text-primary" />
+              Community
+            </a>
+            <a 
+              href="#events" 
+              className="flex items-center text-gray-700 hover:bg-teal-50 block px-5 py-3 rounded-lg mx-3 text-base font-medium"
+              onClick={handleLinkClick}
+            >
+              <Calendar className="h-5 w-5 mr-3 text-secondary" />
+              Events
             </a>
             <a 
               href="#testimonials" 
-              className="text-gray-600 hover:bg-gray-50 block px-3 py-2 rounded-md text-base font-medium"
+              className="flex items-center text-gray-700 hover:bg-pink-50 block px-5 py-3 rounded-lg mx-3 text-base font-medium"
               onClick={handleLinkClick}
             >
-              Testimonials
+              <MessageSquare className="h-5 w-5 mr-3 text-accent" />
+              Real Talk
             </a>
             <a 
-              href="#contact" 
-              className="text-gray-600 hover:bg-gray-50 block px-3 py-2 rounded-md text-base font-medium"
+              href="#jobs" 
+              className="flex items-center text-gray-700 hover:bg-lime-50 block px-5 py-3 rounded-lg mx-3 text-base font-medium"
               onClick={handleLinkClick}
             >
-              Contact
+              <Briefcase className="h-5 w-5 mr-3 text-lime" />
+              Jobs
             </a>
-            <a 
-              href="#" 
-              className="text-gray-600 hover:bg-gray-50 block px-3 py-2 rounded-md text-base font-medium"
-              onClick={handleLinkClick}
-            >
-              About
-            </a>
-            <div className="px-3 py-2">
-              <Button className="w-full" variant="default">
-                Sign In
+            <div className="px-4 py-4">
+              <Button className="w-full rounded-full pulse-glow font-medium py-6" variant="default">
+                Join UNiSO Now
               </Button>
             </div>
           </div>

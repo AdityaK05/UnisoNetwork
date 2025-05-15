@@ -14,27 +14,35 @@
   --border: 20 5.9% 90%;
   --input: 20 5.9% 90%;
   
-  /* Primary Colors - Indigo */
-  --primary: 240 79% 66%;
+  /* Primary Color - Vibrant Purple (Gen Z favorite) */
+  --primary: 267 83% 60%;
   --primary-foreground: 210 40% 98%;
   
-  /* Secondary Colors - Blue */
-  --secondary: 214 100% 60%;
+  /* Secondary Color - Teal */
+  --secondary: 180 100% 50%;
   --secondary-foreground: 210 40% 98%;
   
-  /* Accent Colors - Orange */
-  --accent: 30 93% 54%;
+  /* Accent Color - Coral Pink */
+  --accent: 350 100% 74%;
   --accent-foreground: 210 40% 98%;
+  
+  /* Extra Gen Z Color - Electric Blue */
+  --electric: 195 100% 50%;
+  --electric-foreground: 210 40% 98%;
+  
+  /* Lime Green Accent */
+  --lime: 85 86% 60%;
+  --lime-foreground: 20 14.3% 4.1%;
   
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 60 9.1% 97.8%;
   --ring: 20 14.3% 4.1%;
-  --radius: 0.5rem;
+  --radius: 1rem; /* More rounded for Gen Z aesthetic */
 }
 
 .dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
+  --background: 224 71% 4%;
+  --foreground: 0 0% 100%;
   --muted: 240 3.7% 15.9%;
   --muted-foreground: 240 5% 64.9%;
   --popover: 240 10% 3.9%;
@@ -44,22 +52,30 @@
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
   
-  /* Primary Colors - Indigo */
-  --primary: 240 79% 66%;
+  /* Primary Color - Vibrant Purple (Gen Z favorite) */
+  --primary: 267 83% 60%;
   --primary-foreground: 210 40% 98%;
   
-  /* Secondary Colors - Blue */
-  --secondary: 214 100% 60%;
+  /* Secondary Color - Teal */
+  --secondary: 180 100% 50%;
   --secondary-foreground: 210 40% 98%;
   
-  /* Accent Colors - Orange */
-  --accent: 30 93% 54%;
+  /* Accent Color - Coral Pink */
+  --accent: 350 100% 74%;
   --accent-foreground: 210 40% 98%;
+  
+  /* Extra Gen Z Color - Electric Blue */
+  --electric: 195 100% 50%;
+  --electric-foreground: 210 40% 98%;
+  
+  /* Lime Green Accent */
+  --lime: 85 86% 60%;
+  --lime-foreground: 20 14.3% 4.1%;
   
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
   --ring: 240 4.9% 83.9%;
-  --radius: 0.5rem;
+  --radius: 1rem; /* More rounded for Gen Z aesthetic */
 }
 
 @layer base {
@@ -84,6 +100,67 @@
   background: linear-gradient(180deg, rgba(249,250,251,0) 0%, rgba(249,250,251,1) 100%);
 }
 
+/* Gen Z Gradient Styles */
 .bg-gradient-hero {
-  background-image: linear-gradient(to bottom right, white, rgb(243 244 246), rgb(238 242 255));
+  background: linear-gradient(125deg, #6f42c1 0%, #a75fe9 30%, #4cc9f0 100%);
+}
+
+.bg-gradient-card-1 {
+  background: linear-gradient(120deg, #6f42c1 0%, #a75fe9 100%);
+}
+
+.bg-gradient-card-2 {
+  background: linear-gradient(120deg, #00bcd4 0%, #4cc9f0 100%);
+}
+
+.bg-gradient-card-3 {
+  background: linear-gradient(120deg, #ff5e7d 0%, #ff8896 100%);
+}
+
+.bg-gradient-card-4 {
+  background: linear-gradient(120deg, #a0e65c 0%, #c1f880 100%);
+}
+
+.bg-gradient-card-5 {
+  background: linear-gradient(120deg, #ffaa00 0%, #ffc857 100%);
+}
+
+/* Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 0 0 rgba(111, 66, 193, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(111, 66, 193, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(111, 66, 193, 0); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+/* Hover Effects */
+.hover-lift {
+  transition: transform 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+}
+
+/* Emojis and Fun Elements */
+.emoji-pop {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.emoji-pop:hover {
+  transform: scale(1.3);
 }
