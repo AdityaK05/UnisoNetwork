@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { Link } from 'wouter';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Search, Upload, Download, FileText, Star, Clock, File, Filter } from 'lucide-react';
+import { Search, Upload, Download, FileText, Star, Clock, Filter } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import MainLayout from '@/components/layout/MainLayout';
 
 // Mock data for resources
 const RESOURCES = [
@@ -151,6 +151,10 @@ export default function ResourcesPage() {
   const [activeTab, setActiveTab] = useState('All Resources');
   const [showFilters, setShowFilters] = useState(false);
   
+  useEffect(() => {
+    document.title = "UNiSO - Resource Swaps";
+  }, []);
+  
   // Filter resources based on search and selected subject
   let filteredResources = RESOURCES.filter(resource => {
     // Search filter
@@ -193,18 +197,13 @@ export default function ResourcesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <MainLayout>
       {/* Header with gradient background */}
       <div className="bg-gradient-hero text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-72 h-72 bg-secondary/20 rounded-full filter blur-3xl mix-blend-multiply"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent/20 rounded-full filter blur-3xl mix-blend-multiply"></div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 relative z-10">
-          <Link href="/" className="inline-flex items-center text-white/80 hover:text-white mb-6 transition-colors">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            <span>Back to Home</span>
-          </Link>
-          
           <div className="flex flex-col md:flex-row md:items-end md:justify-between">
             <div className="flex items-center gap-3">
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight font-poppins">
@@ -386,6 +385,6 @@ export default function ResourcesPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </MainLayout>
   );
 }
