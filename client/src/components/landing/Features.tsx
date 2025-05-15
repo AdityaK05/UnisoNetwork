@@ -13,7 +13,7 @@ export default function Features() {
       description: "Find your people! Join groups that match your vibe, from anime fans to future entrepreneurs.",
       gradientClass: "bg-gradient-card-1",
       action: "Find your tribe →",
-      link: "#"
+      link: "/groups"
     },
     {
       icon: <CalendarDays className="h-7 w-7" />,
@@ -22,7 +22,7 @@ export default function Features() {
       description: "Never miss the fun! Parties, club meetups, workshops, and every cool happening on campus.",
       gradientClass: "bg-gradient-card-2",
       action: "See what's poppin' →",
-      link: "#"
+      link: "/events"
     },
     {
       icon: <MessageSquare className="h-7 w-7" />,
@@ -31,7 +31,7 @@ export default function Features() {
       description: "Ask anything, talk about everything. No filter conversations about classes, profs, and campus life.",
       gradientClass: "bg-gradient-card-3",
       action: "Get the tea →",
-      link: "#"
+      link: "/forums"
     },
     {
       icon: <Briefcase className="h-7 w-7" />,
@@ -49,7 +49,7 @@ export default function Features() {
       description: "Clutch notes, study guides, and materials shared by fellow students who actually aced the class.",
       gradientClass: "bg-gradient-card-5",
       action: "Study smarter →",
-      link: "#"
+      link: "/resources"
     }
   ];
 
@@ -126,18 +126,18 @@ export default function Features() {
                 UNiSO's smart notifications keep you in the loop about events you'll love, discussions that match your interests, and opportunities that fit your goals.
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
-                <span className="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-sm font-medium text-primary">
+                <Link href="/groups" className="inline-flex items-center rounded-full bg-purple-100 px-3 py-1 text-sm font-medium text-primary hover:bg-purple-200 transition-colors">
                   #Study Groups
-                </span>
-                <span className="inline-flex items-center rounded-full bg-teal-100 px-3 py-1 text-sm font-medium text-secondary">
+                </Link>
+                <Link href="/events" className="inline-flex items-center rounded-full bg-teal-100 px-3 py-1 text-sm font-medium text-secondary hover:bg-teal-200 transition-colors">
                   #Campus Events
-                </span>
-                <Link href="/internships" className="inline-flex items-center rounded-full bg-pink-100 px-3 py-1 text-sm font-medium text-accent">
+                </Link>
+                <Link href="/internships" className="inline-flex items-center rounded-full bg-pink-100 px-3 py-1 text-sm font-medium text-accent hover:bg-pink-200 transition-colors">
                   #Internships
                 </Link>
-                <span className="inline-flex items-center rounded-full bg-lime-100 px-3 py-1 text-sm font-medium text-lime">
+                <Link href="/forums" className="inline-flex items-center rounded-full bg-lime-100 px-3 py-1 text-sm font-medium text-lime hover:bg-lime-200 transition-colors">
                   #Dorm Life
-                </span>
+                </Link>
               </div>
             </div>
             <div className="mt-10 lg:mt-0 flex justify-center">
