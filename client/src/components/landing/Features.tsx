@@ -2,6 +2,7 @@ import {
   Users, MessageSquare, BookOpen, 
   CalendarDays, Briefcase, RotateCcw 
 } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Features() {
   const features = [
@@ -11,7 +12,8 @@ export default function Features() {
       title: "Community Groups",
       description: "Find your people! Join groups that match your vibe, from anime fans to future entrepreneurs.",
       gradientClass: "bg-gradient-card-1",
-      action: "Find your tribe →"
+      action: "Find your tribe →",
+      link: "#"
     },
     {
       icon: <CalendarDays className="h-7 w-7" />,
@@ -19,7 +21,8 @@ export default function Features() {
       title: "Campus Events",
       description: "Never miss the fun! Parties, club meetups, workshops, and every cool happening on campus.",
       gradientClass: "bg-gradient-card-2",
-      action: "See what's poppin' →"
+      action: "See what's poppin' →",
+      link: "#"
     },
     {
       icon: <MessageSquare className="h-7 w-7" />,
@@ -27,7 +30,8 @@ export default function Features() {
       title: "Real Talk Forums",
       description: "Ask anything, talk about everything. No filter conversations about classes, profs, and campus life.",
       gradientClass: "bg-gradient-card-3",
-      action: "Get the tea →"
+      action: "Get the tea →",
+      link: "#"
     },
     {
       icon: <Briefcase className="h-7 w-7" />,
@@ -35,7 +39,8 @@ export default function Features() {
       title: "Internship & Job Board",
       description: "Snag that dream internship or side hustle. Exclusive opportunities just for students like you.",
       gradientClass: "bg-gradient-card-4",
-      action: "Level up your resume →"
+      action: "Level up your resume →",
+      link: "/internships"
     },
     {
       icon: <BookOpen className="h-7 w-7" />,
@@ -43,7 +48,8 @@ export default function Features() {
       title: "Resource Swaps",
       description: "Clutch notes, study guides, and materials shared by fellow students who actually aced the class.",
       gradientClass: "bg-gradient-card-5",
-      action: "Study smarter →"
+      action: "Study smarter →",
+      link: "#"
     }
   ];
 
@@ -95,12 +101,12 @@ export default function Features() {
                   {feature.description}
                 </p>
                 
-                <a 
-                  href="#" 
+                <Link 
+                  href={feature.link}
                   className="inline-flex items-center text-white font-medium bg-white/20 hover:bg-white/30 transition-colors rounded-full py-2 px-4 mt-auto"
                 >
                   {feature.action}
-                </a>
+                </Link>
               </div>
             </div>
           ))}
@@ -126,9 +132,9 @@ export default function Features() {
                 <span className="inline-flex items-center rounded-full bg-teal-100 px-3 py-1 text-sm font-medium text-secondary">
                   #Campus Events
                 </span>
-                <span className="inline-flex items-center rounded-full bg-pink-100 px-3 py-1 text-sm font-medium text-accent">
+                <Link href="/internships" className="inline-flex items-center rounded-full bg-pink-100 px-3 py-1 text-sm font-medium text-accent">
                   #Internships
-                </span>
+                </Link>
                 <span className="inline-flex items-center rounded-full bg-lime-100 px-3 py-1 text-sm font-medium text-lime">
                   #Dorm Life
                 </span>
