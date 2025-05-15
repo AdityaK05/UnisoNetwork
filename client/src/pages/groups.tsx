@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Search, Users, Plus, Heart } from 'lucide-react';
+import { Search, Users, Plus, Heart } from 'lucide-react';
+import MainLayout from '@/components/layout/MainLayout';
 
 // Mock data for community groups
 const COMMUNITY_GROUPS = [
@@ -116,17 +116,15 @@ export default function GroupsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header with gradient background */}
+    <MainLayout>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header with gradient background */}
       <div className="bg-gradient-hero text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-72 h-72 bg-secondary/20 rounded-full filter blur-3xl mix-blend-multiply"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent/20 rounded-full filter blur-3xl mix-blend-multiply"></div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 relative z-10">
-          <Link href="/" className="inline-flex items-center text-white/80 hover:text-white mb-6 transition-colors">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            <span>Back to Home</span>
-          </Link>
+          {/* Back button removed as we now have the navbar */}
           
           <div className="flex flex-col md:flex-row md:items-end md:justify-between">
             <div className="flex items-center gap-3">
@@ -269,6 +267,7 @@ export default function GroupsPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </MainLayout>
   );
 }

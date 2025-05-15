@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Menu, X, Zap, Users, Calendar, MessageSquare, Briefcase } from "lucide-react";
+import { Menu, X, Zap, Users, Calendar, MessageSquare, Briefcase, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [location] = useLocation();
 
   // Handle scroll event to change navbar appearance
   useEffect(() => {
@@ -22,47 +23,87 @@ export default function Navbar() {
     setMobileMenuOpen(false);
   };
 
+  // Check if we're on the homepage or another page to determine navbar styling
+  const isHomePage = location === '/';
+  
+  const navLinks = [
+    {
+      name: "Community",
+      path: "/groups",
+      icon: <Users className="h-4 w-4 md:mr-1.5" />,
+      mobileIcon: <Users className="h-5 w-5 mr-3 text-primary" />,
+      activeColor: "text-primary",
+      hoverBg: "hover:bg-purple-50"
+    },
+    {
+      name: "Events",
+      path: "/events",
+      icon: <Calendar className="h-4 w-4 md:mr-1.5" />,
+      mobileIcon: <Calendar className="h-5 w-5 mr-3 text-secondary" />,
+      activeColor: "text-secondary",
+      hoverBg: "hover:bg-teal-50"
+    },
+    {
+      name: "Real Talks",
+      path: "/forums",
+      icon: <MessageSquare className="h-4 w-4 md:mr-1.5" />,
+      mobileIcon: <MessageSquare className="h-5 w-5 mr-3 text-accent" />,
+      activeColor: "text-accent",
+      hoverBg: "hover:bg-pink-50"
+    },
+    {
+      name: "Jobs",
+      path: "/internships",
+      icon: <Briefcase className="h-4 w-4 md:mr-1.5" />,
+      mobileIcon: <Briefcase className="h-5 w-5 mr-3 text-lime" />,
+      activeColor: "text-lime",
+      hoverBg: "hover:bg-lime-50"
+    },
+    {
+      name: "Resources",
+      path: "/resources",
+      icon: <BookOpen className="h-4 w-4 md:mr-1.5" />,
+      mobileIcon: <BookOpen className="h-5 w-5 mr-3 text-primary" />,
+      activeColor: "text-primary",
+      hoverBg: "hover:bg-purple-50"
+    }
+  ];
+
   return (
-    <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${isScrolled ? "bg-white/95 backdrop-blur-md shadow-lg" : "bg-transparent"}`}>
+    <nav className={`fixed w-full top-0 z-50 transition-all duration-300 ${
+      isScrolled || !isHomePage 
+        ? "bg-white/95 backdrop-blur-md shadow-lg" 
+        : "bg-transparent"
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20">
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0 flex items-center">
-              <Zap className="h-8 w-8 text-primary mr-2" />
-              <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-card-1 font-poppins">UNiSO</span>
+              <Zap className={`h-8 w-8 ${isHomePage ? "text-primary" : "text-primary"} mr-2`} />
+              <span className={`text-2xl font-bold font-poppins ${
+                isHomePage 
+                  ? "bg-clip-text text-transparent bg-gradient-card-1" 
+                  : "text-primary"
+              }`}>UNiSO</span>
             </Link>
           </div>
           
           {/* Desktop Menu */}
-          <div className="hidden md:ml-6 md:flex md:items-center md:space-x-8">
-            <a 
-              href="#features" 
-              className="flex items-center text-gray-700 hover:text-primary px-3 py-2 rounded-full text-sm font-medium transition-colors hover:bg-purple-50"
-            >
-              <Users className="h-4 w-4 mr-1.5" />
-              Community
-            </a>
-            <a 
-              href="#events" 
-              className="flex items-center text-gray-700 hover:text-secondary px-3 py-2 rounded-full text-sm font-medium transition-colors hover:bg-teal-50"
-            >
-              <Calendar className="h-4 w-4 mr-1.5" />
-              Events
-            </a>
-            <a 
-              href="#testimonials" 
-              className="flex items-center text-gray-700 hover:text-accent px-3 py-2 rounded-full text-sm font-medium transition-colors hover:bg-pink-50"
-            >
-              <MessageSquare className="h-4 w-4 mr-1.5" />
-              Real Talk
-            </a>
-            <a 
-              href="#jobs" 
-              className="flex items-center text-gray-700 hover:text-lime px-3 py-2 rounded-full text-sm font-medium transition-colors hover:bg-lime-50"
-            >
-              <Briefcase className="h-4 w-4 mr-1.5" />
-              Jobs
-            </a>
+          <div className="hidden md:ml-6 md:flex md:items-center md:space-x-4 lg:space-x-6">
+            {navLinks.map((link) => (
+              <Link 
+                key={link.path}
+                href={link.path} 
+                className={`flex items-center px-3 py-2 rounded-full text-sm font-medium transition-colors ${
+                  location === link.path 
+                    ? `${link.activeColor} bg-opacity-10` 
+                    : `text-gray-700 hover:${link.activeColor}`
+                } ${link.hoverBg}`}
+              >
+                {link.icon}
+                <span className="hidden sm:inline">{link.name}</span>
+              </Link>
+            ))}
             <Button 
               variant="default" 
               size="sm" 
@@ -91,38 +132,19 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden">
           <div className="pt-2 pb-3 space-y-1 bg-white/95 backdrop-blur-md rounded-b-2xl shadow-lg">
-            <a 
-              href="#features" 
-              className="flex items-center text-gray-700 hover:bg-purple-50 block px-5 py-3 rounded-lg mx-3 text-base font-medium"
-              onClick={handleLinkClick}
-            >
-              <Users className="h-5 w-5 mr-3 text-primary" />
-              Community
-            </a>
-            <a 
-              href="#events" 
-              className="flex items-center text-gray-700 hover:bg-teal-50 block px-5 py-3 rounded-lg mx-3 text-base font-medium"
-              onClick={handleLinkClick}
-            >
-              <Calendar className="h-5 w-5 mr-3 text-secondary" />
-              Events
-            </a>
-            <a 
-              href="#testimonials" 
-              className="flex items-center text-gray-700 hover:bg-pink-50 block px-5 py-3 rounded-lg mx-3 text-base font-medium"
-              onClick={handleLinkClick}
-            >
-              <MessageSquare className="h-5 w-5 mr-3 text-accent" />
-              Real Talk
-            </a>
-            <a 
-              href="#jobs" 
-              className="flex items-center text-gray-700 hover:bg-lime-50 block px-5 py-3 rounded-lg mx-3 text-base font-medium"
-              onClick={handleLinkClick}
-            >
-              <Briefcase className="h-5 w-5 mr-3 text-lime" />
-              Jobs
-            </a>
+            {navLinks.map((link) => (
+              <Link 
+                key={link.path}
+                href={link.path} 
+                className={`flex items-center hover:bg-gray-50 block px-5 py-3 rounded-lg mx-3 text-base font-medium ${
+                  location === link.path ? link.activeColor : "text-gray-700"
+                } ${link.hoverBg}`}
+                onClick={handleLinkClick}
+              >
+                {link.mobileIcon}
+                {link.name}
+              </Link>
+            ))}
             <div className="px-4 py-4">
               <Button className="w-full rounded-full pulse-glow font-medium py-6" variant="default">
                 Join UNiSO Now
