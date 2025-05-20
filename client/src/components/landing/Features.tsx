@@ -55,6 +55,7 @@ export default function Features() {
 
   return (
     <section id="features" className="py-24 bg-white relative overflow-hidden">
+      {/* Decorative Background Elements */}
       <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-br from-primary to-secondary transform -skew-y-3"></div>
       <div className="absolute bottom-0 right-0 w-72 h-72 bg-purple-200 rounded-full opacity-20 -z-10 blur-2xl"></div>
       <div className="absolute top-1/3 left-0 w-56 h-56 bg-teal-200 rounded-full opacity-20 -z-10 blur-xl"></div>
@@ -67,10 +68,7 @@ export default function Features() {
           </div>
 
           <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 font-poppins">
-            Everything you need to{" "}
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
-              thrive at college
-            </span>
+            Everything you need to thrive at College
           </h2>
 
           <p className="mt-4 max-w-2xl text-xl text-gray-600 mx-auto">
@@ -78,11 +76,38 @@ export default function Features() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, idx) => (
+        {/* Custom Grid Layout */}
+        <div className="grid grid-cols-3 gap-10 justify-items-center mb-10">
+          {features.slice(0, 3).map((feature, idx) => (
             <div
               key={idx}
-              className={`rounded-2xl p-6 shadow-xl bg-gradient-to-br ${feature.gradientClass} text-white group transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl`}
+              className={`rounded-2xl p-6 shadow-xl bg-gradient-to-br ${feature.gradientClass} text-white group transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl w-full max-w-sm`}
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                  {feature.icon}
+                </div>
+                <span className="text-3xl animate-bounce-slow">{feature.emoji}</span>
+              </div>
+
+              <h3 className="text-xl font-bold mb-2 font-poppins">{feature.title}</h3>
+              <p className="text-white/80 mb-6">{feature.description}</p>
+
+              <Link
+                href={feature.link}
+                className="inline-flex items-center text-sm font-medium bg-white/20 hover:bg-white/30 transition px-4 py-2 rounded-full mt-auto"
+              >
+                {feature.action}
+              </Link>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 gap-10 justify-center max-w-3xl mx-auto">
+          {features.slice(3).map((feature, idx) => (
+            <div
+              key={idx}
+              className={`rounded-2xl p-6 shadow-xl bg-gradient-to-br ${feature.gradientClass} text-white group transform transition duration-300 hover:-translate-y-2 hover:shadow-2xl w-full max-w-sm`}
             >
               <div className="flex justify-between items-start mb-6">
                 <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
