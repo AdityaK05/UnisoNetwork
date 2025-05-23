@@ -87,11 +87,10 @@ export default function Navbar() {
         <div className="flex justify-between h-20 items-center">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <Zap className={`h-7 w-7 ${isHomePage ? "text-white" : "text-primary"}`} />
             <span
               className={`text-2xl font-bold font-poppins ${isHomePage
-                  ? "bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary"
-                  : "text-primary"
+                  ? "text-black"
+                  : "text-black"
                 }`}
             >
               UNiSO

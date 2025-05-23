@@ -56,7 +56,7 @@ export default function Features() {
   return (
     <section id="features" className="py-24 bg-white relative overflow-hidden">
       {/* Decorative Background Elements */}
-      <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-br from-primary to-secondary transform -skew-y-3"></div>
+      {/* <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-br from-primary to-secondary transform -skew-y-3"></div> */}
       <div className="absolute bottom-0 right-0 w-72 h-72 bg-purple-200 rounded-full opacity-20 -z-10 blur-2xl"></div>
       <div className="absolute top-1/3 left-0 w-56 h-56 bg-teal-200 rounded-full opacity-20 -z-10 blur-xl"></div>
 
