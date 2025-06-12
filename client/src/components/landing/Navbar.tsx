@@ -40,7 +40,7 @@ export default function Navbar() {
       icon: <Users className="h-4 w-4 md:mr-1.5 text-black" />,
       mobileIcon: <Users className="h-5 w-5 mr-3 text-black" />,
       activeColor: "text-primary",
-      hoverBg: "hover:bg-white/10",
+      hoverBg: "hover:bg-white",
     },
     {
       name: "Events",
@@ -48,7 +48,7 @@ export default function Navbar() {
       icon: <Calendar className="h-4 w-4 md:mr-1.5 text-black" />,
       mobileIcon: <Calendar className="h-5 w-5 mr-3 text-black" />,
       activeColor: "text-primary",
-      hoverBg: "hover:bg-white/10",
+      hoverBg: "hover:bg-white",
     },
     {
       name: "Real Talks",
@@ -56,7 +56,7 @@ export default function Navbar() {
       icon: <MessageSquare className="h-4 w-4 md:mr-1.5 text-black" />,
       mobileIcon: <MessageSquare className="h-5 w-5 mr-3 text-black" />,
       activeColor: "text-primary",
-      hoverBg: "hover:bg-white/10",
+      hoverBg: "hover:bg-white",
     },
     {
       name: "Jobs",
@@ -64,7 +64,7 @@ export default function Navbar() {
       icon: <Briefcase className="h-4 w-4 md:mr-1.5 text-black" />,
       mobileIcon: <Briefcase className="h-5 w-5 mr-3 text-black" />,
       activeColor: "text-primary",
-      hoverBg: "hover:bg-white/10",
+      hoverBg: "hover:bg-white",
     },
     {
       name: "Resources",
@@ -72,7 +72,7 @@ export default function Navbar() {
       icon: <BookOpen className="h-4 w-4 md:mr-1.5 text-black" />,
       mobileIcon: <BookOpen className="h-5 w-5 mr-3 text-black" />,
       activeColor: "text-primary",
-      hoverBg: "hover:bg-white/10",
+      hoverBg: "hover:bg-white",
     },
   ];
 
