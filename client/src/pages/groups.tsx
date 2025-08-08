@@ -18,16 +18,7 @@ interface CommunityGroup {
 
 // Mock data for community groups
 const COMMUNITY_GROUPS: CommunityGroup[] = [
-  {
-    id: 1,
-    name: "Late Night Study Squad",
-    tagline: "For night owls cramming before exams",
-    interests: ["Study", "Academic"],
-    memberCount: 87,
-    emoji: "🦉",
-    gradientClass: "bg-gradient-card-1"
-  },
-  // ... (keep all other group objects the same)
+  // This will be replaced by backend data
 ];
 
 // Available interests for filtering
@@ -37,15 +28,37 @@ export default function GroupsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [groups, setGroups] = useState<CommunityGroup[]>([]);
 
   useEffect(() => {
     document.title = "UNiSO - Community Groups";
-    // Simulate loading for demo purposes
-    setLoading(true);
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
+    fetchGroups();
   }, []);
+
+  const fetchGroups = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/groups');
+      const data = await response.json();
+      // Map backend data to CommunityGroup type
+      const formattedGroups = data.map((group: any) => ({
+        id: group.id || group.$id,
+        name: group.name,
+        tagline: group.description || '',
+        interests: group.interests || [],
+        memberCount: group.memberCount || 0,
+        emoji: group.emoji || '🫂',
+        gradientClass: 'bg-gradient-card-1',
+      }));
+      setGroups(formattedGroups);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      toast.error('Failed to load groups');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleInterest = (interest: string) => {
     if (interest === "All") {
@@ -74,7 +87,7 @@ export default function GroupsPage() {
   };
 
   const filteredGroups = useMemo(() => {
-    return COMMUNITY_GROUPS.filter(group => {
+    return groups.filter(group => {
       const matchesSearch = searchQuery === '' ||
         group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         group.tagline.toLowerCase().includes(searchQuery.toLowerCase());

@@ -1,25 +1,45 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import authService from '../appwrite/auth';
+import { useAuth } from '../hooks/AuthContext';
+import { Link, useLocation } from 'wouter';
+import authService from '../services/auth';
 
-const Signup: React.FC = () => {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+const SignUp: React.FC = () => {
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+    });
     const [error, setError] = useState('');
-    const navigate = useNavigate();
+    const [, setLocation] = useLocation();
+    const { login } = useAuth();
 
-    const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
+
+        if (formData.password !== formData.confirmPassword) {
+            setError('Passwords do not match');
+            return;
+        }
+
         try {
-            await authService.createAccount(email, password, name);
-            navigate('/');
+            const response = await authService.register({
+                name: formData.name,
+                email: formData.email,
+                password: formData.password
+            });
+            
+            // Use login function from AuthContext
+            login(response.user, response.token);
+            
+            // Redirect to home
+            setLocation('/');
         } catch (err: unknown) {
             if (err instanceof Error) {
                 setError(err.message);
             } else {
-                setError('Signup failed due to an unknown error.');
+                setError('Sign up failed due to an unknown error.');
             }
         }
     };
@@ -32,15 +52,15 @@ const Signup: React.FC = () => {
 
                 {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-                <form onSubmit={handleSignup} className="space-y-4 text-left">
+                <form onSubmit={handleSignUp} className="space-y-4 text-left">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                         <input
                             type="text"
                             className="w-full px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
                             placeholder="Enter your full name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            value={formData.name}
+                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                             required
                         />
                     </div>
@@ -50,8 +70,8 @@ const Signup: React.FC = () => {
                             type="email"
                             className="w-full px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
                             placeholder="Enter your email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            value={formData.email}
+                            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                             required
                         />
                     </div>
@@ -61,8 +81,19 @@ const Signup: React.FC = () => {
                             type="password"
                             className="w-full px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
                             placeholder="Create a password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            value={formData.password}
+                            onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                        <input
+                            type="password"
+                            className="w-full px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
+                            placeholder="Confirm your password"
+                            value={formData.confirmPassword}
+                            onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                             required
                         />
                     </div>
@@ -76,7 +107,7 @@ const Signup: React.FC = () => {
 
                 <p className="text-sm text-gray-500 mt-6">
                     Already have an account?{' '}
-                    <Link to="/login" className="text-blue-600 font-semibold hover:underline">
+                    <Link href="/login" className="text-blue-600 font-semibold hover:underline">
                         Login
                     </Link>
                 </p>
@@ -85,4 +116,4 @@ const Signup: React.FC = () => {
     );
 };
 
-export default Signup;
+export default SignUp;

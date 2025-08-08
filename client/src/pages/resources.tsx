@@ -6,17 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Upload, Download, FileText, Star, Clock, Filter } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import MainLayout from '@/components/layout/MainLayout';
-import { Client, Databases, Query } from 'appwrite';
 import { toast } from 'react-hot-toast';
-
-// Initialize Appwrite client
-const client = new Client()
-  .setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT)
-  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
-
-const databases = new Databases(client);
-const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
-const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_RESOURCES;
 
 interface Resource {
   id: string;
@@ -54,29 +44,24 @@ export default function ResourcesPage() {
   const fetchResources = async () => {
     try {
       setLoading(true);
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTION_ID,
-        [Query.orderDesc('uploadDate')]
-      );
-
-      const formattedResources = response.documents.map(doc => ({
-        id: doc.$id,
+      const response = await fetch('/api/resources');
+      const data = await response.json();
+      const formattedResources = data.map((doc: any) => ({
+        id: doc.id || doc.$id,
         title: doc.title,
         description: doc.description,
         subject: doc.subject,
         course: doc.course,
         fileType: doc.fileType,
         fileSize: doc.fileSize,
-        uploadDate: doc.uploadDate,
-        uploader: doc.uploader,
+        uploadDate: doc.created_at || doc.uploadDate,
+        uploader: doc.uploader || '',
         uploaderAvatar: doc.uploaderAvatar || `https://i.pravatar.cc/150?img=${Math.floor(Math.random() * 70)}`,
         downloads: doc.downloads || 0,
         rating: doc.rating || 0,
         ratingCount: doc.ratingCount || 0,
         icon: getResourceIcon(doc.subject)
       }));
-
       setResources(formattedResources);
     } catch (error) {
       console.error('Error fetching resources:', error);

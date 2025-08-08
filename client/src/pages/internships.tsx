@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Link } from 'wouter';
-import { databases } from '../lib/appwrite'; // your Appwrite config file
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -36,18 +35,15 @@ export default function InternshipsPage() {
   useEffect(() => {
     const fetchInternships = async () => {
       try {
-        const res = await databases.listDocuments(
-          import.meta.env.VITE_APPWRITE_DATABASE_ID,
-          import.meta.env.VITE_APPWRITE_COLLECTION_INTERNSHIPS
-        );
-        setInternships(res.documents);
+        const res = await fetch('/api/internships');
+        const data = await res.json();
+        setInternships(data);
       } catch (err) {
         console.error('Failed to fetch internships:', err);
       } finally {
         setLoading(false);
       }
     };
-
     fetchInternships();
   }, []);
 

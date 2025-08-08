@@ -1,9 +1,30 @@
 "use client";
-import { Link } from "react-router-dom";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
+import React, { useEffect, useState } from "react";
+
 
 export default function Hero() {
+  const [user, setUser] = useState<any>(null);
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setUser(null);
+      return;
+    }
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      fetch(`/api/users/${payload.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => setUser(data));
+    } catch {
+      setUser(null);
+    }
+  }, []);
+
   return (
     <section className="relative pt-28 pb-24 md:pt-36 md:pb-32 overflow-hidden bg-gradient-to-br from-[#A066F5] via-[#649DF5] to-[#35D6F5] text-white">
       <div className="absolute top-20 right-0 w-72 h-72 bg-white/10 rounded-full filter blur-3xl mix-blend-soft-light pointer-events-none"></div>
@@ -23,21 +44,30 @@ export default function Hero() {
             </h1>
 
             <p className="mt-6 text-xl text-white/80 sm:mt-5 sm:text-xl md:mt-5 md:text-2xl font-light">
-              Join Communities, explore Opportunities, and Stay Connected with your Campus.
+              {user ? (
+                <span>
+                  Welcome back, <span className="font-bold text-white">{user.name}</span>!<br />
+                  Explore new opportunities and connect with your campus community.
+                </span>
+              ) : (
+                <>Join Communities, explore Opportunities, and Stay Connected with your Campus.</>
+              )}
             </p>
 
-            <div className="mt-10 flex flex-wrap gap-4 sm:justify-center lg:justify-start">
-              <Link to="/signup">
-                <Button variant="outline" className="bg-white text-purple-600 hover:bg-black transition-colors">
-                  Get Started
-                </Button>
-              </Link>
-              <Link to="/login">
-                <Button variant="outline" className="bg-white text-purple-600 hover:bg-black transition-colors">
-                  Login
-                </Button>
-              </Link>
-            </div>
+            {!user && (
+              <div className="mt-10 flex flex-wrap gap-4 sm:justify-center lg:justify-start">
+                <Link href="/signup">
+                  <Button variant="outline" className="bg-white text-purple-600 hover:bg-black transition-colors">
+                    Get Started
+                  </Button>
+                </Link>
+                <Link href="/login">
+                  <Button variant="outline" className="bg-white text-purple-600 hover:bg-black transition-colors">
+                    Login
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
 
           <div className="mt-16 sm:mt-24 lg:mt-0 lg:col-span-5 relative animate-float">

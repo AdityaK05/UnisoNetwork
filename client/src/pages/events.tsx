@@ -5,17 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, MapPin, Users, CalendarDays, Sparkles, Search } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
-import { Client, Databases, Query } from 'appwrite';
 import { toast } from 'react-hot-toast';
-
-// Initialize Appwrite client
-const client = new Client()
-  .setEndpoint(import.meta.env.VITE_APPWRITE_ENDPOINT)
-  .setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
-
-const databases = new Databases(client);
-const DATABASE_ID = import.meta.env.VITE_APPWRITE_DATABASE_ID;
-const COLLECTION_ID = import.meta.env.VITE_APPWRITE_COLLECTION_EVENTS;
 
 // Available categories for filtering
 const CATEGORIES = ["All", "Social", "Career", "Food", "Workshop", "Entertainment", "Tech", "Sports", "Academic"];
@@ -44,31 +34,22 @@ export default function EventsPage() {
     fetchEvents();
   }, []);
 
-  // Fetch events from Appwrite
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTION_ID,
-        [
-          Query.orderAsc('date'),
-          Query.limit(100)
-        ]
-      );
-
-      const formattedEvents = response.documents.map(doc => ({
-        id: doc.$id,
+      const response = await fetch('/api/events');
+      const data = await response.json();
+      const formattedEvents = data.map((doc: any) => ({
+        id: doc.id || doc.$id,
         title: doc.title,
         description: doc.description,
-        date: new Date(doc.date),
+        date: new Date(doc.event_date || doc.date),
         location: doc.location,
-        category: doc.category,
-        attendees: doc.attendees,
-        image: doc.image,
-        featured: doc.featured
+        category: doc.category || '',
+        attendees: doc.attendees || 0,
+        image: doc.image || '',
+        featured: doc.featured || false
       }));
-
       setEvents(formattedEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -122,19 +103,17 @@ export default function EventsPage() {
   // RSVP to an event
   const handleRSVP = async (eventId: string) => {
     try {
-      // First get the current event to update attendees count
-      const event = await databases.getDocument(DATABASE_ID, COLLECTION_ID, eventId);
-      const currentAttendees = event.attendees || 0;
-
-      // Update the attendees count
-      await databases.updateDocument(
-        DATABASE_ID,
-        COLLECTION_ID,
-        eventId,
-        {
-          attendees: currentAttendees + 1
+      const response = await fetch(`/api/events/${eventId}/rsvp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
-      );
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to RSVP');
+      }
 
       toast.success("You've successfully RSVP'd to this event!");
       fetchEvents(); // Refresh the events list

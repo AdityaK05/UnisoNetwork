@@ -1,19 +1,26 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import authService from '../appwrite/auth';
+import { useAuth } from '../hooks/AuthContext';
+import { Link, useLocation } from 'wouter';
+import authService from '../services/auth';
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const navigate = useNavigate();
+    const [, setLocation] = useLocation();
+    const { login } = useAuth();
 
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
         try {
-            await authService.login(email, password);
-            navigate('/');
+            const response = await authService.login({ email, password });
+            
+            // Use login function from AuthContext
+            login(response.user, response.token);
+            
+            // Redirect to home
+            setLocation('/');
         } catch (err: unknown) {
             if (err instanceof Error) {
                 setError(err.message);
@@ -64,7 +71,7 @@ const Login: React.FC = () => {
 
                 <p className="text-sm text-gray-500 mt-6">
                     Don’t have an account?{' '}
-                    <Link to="/signup" className="text-blue-600 font-semibold hover:underline">
+                    <Link href="/signup" className="text-blue-600 font-semibold hover:underline">
                         Sign Up
                     </Link>
                 </p>
