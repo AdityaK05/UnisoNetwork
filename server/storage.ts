@@ -1,7 +1,44 @@
+// ...existing code...
+import { db } from './db/index';
 // @ts-ignore
 import pool from './db/index.cjs';
 
 export class PostgreSQLStorage {
+  // Get groups for a user (member or creator)
+  async getGroupsForUser(userId: number) {
+    try {
+      const res = await pool.query(
+        `SELECT g.* FROM groups g
+         LEFT JOIN group_members gm ON g.id = gm.group_id
+         WHERE g.created_by = $1 OR gm.user_id = $1
+         GROUP BY g.id`
+        , [userId]
+      );
+      return res.rows;
+    } catch (error) {
+      console.error('Error getting user groups:', error);
+      return [];
+    }
+  }
+
+  // Join a group
+  async joinGroup(userId: number, groupId: number) {
+    try {
+      // Check if already a member
+      const check = await pool.query(
+        'SELECT id FROM group_members WHERE user_id = $1 AND group_id = $2',
+        [userId, groupId]
+      );
+      if (check.rows.length > 0) return;
+      await pool.query(
+        'INSERT INTO group_members (user_id, group_id, role) VALUES ($1, $2, $3)',
+        [userId, groupId, 'member']
+      );
+    } catch (error) {
+      console.error('Error joining group:', error);
+      throw new Error('Failed to join group');
+    }
+  }
   // User operations
   async getUser(id: number) {
     try {
@@ -103,7 +140,7 @@ export class PostgreSQLStorage {
         paramIndex++;
       }
 
-      query += ' ORDER BY i.posted_date DESC';
+      query += ` ORDER BY i.posted_date DESC`;
       
       if (filters?.limit) {
         query += ` LIMIT $${paramIndex}`;
@@ -128,27 +165,28 @@ export class PostgreSQLStorage {
     requirements?: string;
     salary_range?: string;
     apply_link: string;
-    deadline?: string;
+    deadline?: Date;
     logo?: string;
     company_color?: string;
-    created_by?: number;
+    created_by: number;
   }) {
     try {
       const res = await pool.query(
-        `INSERT INTO internships (role, company_id, location, type, domain, description, requirements, salary_range, apply_link, deadline, logo, company_color, created_by, posted_date) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_DATE) RETURNING *`,
+        `INSERT INTO internships 
+         (role, company_id, location, type, domain, description, requirements, salary_range, apply_link, deadline, logo, company_color, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
         [
-          internshipData.role, 
-          internshipData.company_id, 
-          internshipData.location, 
-          internshipData.type, 
-          internshipData.domain, 
-          internshipData.description, 
+          internshipData.role,
+          internshipData.company_id,
+          internshipData.location,
+          internshipData.type,
+          internshipData.domain,
+          internshipData.description,
           internshipData.requirements,
           internshipData.salary_range,
-          internshipData.apply_link, 
-          internshipData.deadline, 
-          internshipData.logo, 
+          internshipData.apply_link,
+          internshipData.deadline,
+          internshipData.logo,
           internshipData.company_color,
           internshipData.created_by
         ]
@@ -167,7 +205,7 @@ export class PostgreSQLStorage {
   }) {
     try {
       let query = `
-        SELECT e.*, u.name as creator_name 
+        SELECT e.*, u.name as creator_name
         FROM events e 
         LEFT JOIN users u ON e.created_by = u.id 
         WHERE e.is_active = true
@@ -181,7 +219,7 @@ export class PostgreSQLStorage {
         paramIndex++;
       }
 
-      query += ' ORDER BY e.event_date ASC';
+      query += ` ORDER BY e.event_date ASC`;
       
       if (filters?.limit) {
         query += ` LIMIT $${paramIndex}`;
@@ -199,17 +237,18 @@ export class PostgreSQLStorage {
   async createEvent(eventData: {
     title: string;
     description: string;
-    event_date: string;
+    event_date: Date;
     location: string;
     event_type: string;
     organizer: string;
     registration_link?: string;
     max_participants?: number;
-    created_by?: number;
+    created_by: number;
   }) {
     try {
       const res = await pool.query(
-        `INSERT INTO events (title, description, event_date, location, event_type, organizer, registration_link, max_participants, created_by) 
+        `INSERT INTO events 
+         (title, description, event_date, location, event_type, organizer, registration_link, max_participants, created_by)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
         [
           eventData.title,
@@ -238,27 +277,30 @@ export class PostgreSQLStorage {
   }) {
     try {
       let query = `
-        SELECT g.*, u.name as creator_name 
+        SELECT g.*, u.name as creator_name
         FROM groups g 
         LEFT JOIN users u ON g.created_by = u.id
       `;
       const params: any[] = [];
+      const conditions: string[] = [];
       let paramIndex = 1;
-      let hasWhere = false;
 
       if (filters?.category) {
-        query += ` WHERE g.category = $${paramIndex}`;
+        conditions.push(`g.category = $${paramIndex}`);
         params.push(filters.category);
         paramIndex++;
-        hasWhere = true;
       }
       if (filters?.privacy) {
-        query += hasWhere ? ` AND g.privacy = $${paramIndex}` : ` WHERE g.privacy = $${paramIndex}`;
+        conditions.push(`g.privacy = $${paramIndex}`);
         params.push(filters.privacy);
         paramIndex++;
       }
 
-      query += ' ORDER BY g.created_at DESC';
+      if (conditions.length > 0) {
+        query += ` WHERE ${conditions.join(' AND ')}`;
+      }
+
+      query += ` ORDER BY g.created_at DESC`;
       
       if (filters?.limit) {
         query += ` LIMIT $${paramIndex}`;
@@ -279,12 +321,20 @@ export class PostgreSQLStorage {
     category: string;
     privacy: string;
     max_members?: number;
-    created_by?: number;
+    created_by: number;
   }) {
     try {
       const res = await pool.query(
-        'INSERT INTO groups (name, description, category, privacy, max_members, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [groupData.name, groupData.description, groupData.category, groupData.privacy, groupData.max_members, groupData.created_by]
+        `INSERT INTO groups (name, description, category, privacy, max_members, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [
+          groupData.name,
+          groupData.description,
+          groupData.category,
+          groupData.privacy,
+          groupData.max_members,
+          groupData.created_by
+        ]
       );
       return res.rows[0];
     } catch (error) {
@@ -301,27 +351,30 @@ export class PostgreSQLStorage {
   }) {
     try {
       let query = `
-        SELECT r.*, u.name as poster_name 
+        SELECT r.*, u.name as poster_name
         FROM resources r 
         LEFT JOIN users u ON r.posted_by = u.id
       `;
       const params: any[] = [];
+      const conditions: string[] = [];
       let paramIndex = 1;
-      let hasWhere = false;
 
       if (filters?.category) {
-        query += ` WHERE r.category = $${paramIndex}`;
+        conditions.push(`r.category = $${paramIndex}`);
         params.push(filters.category);
         paramIndex++;
-        hasWhere = true;
       }
       if (filters?.resource_type) {
-        query += hasWhere ? ` AND r.resource_type = $${paramIndex}` : ` WHERE r.resource_type = $${paramIndex}`;
+        conditions.push(`r.resource_type = $${paramIndex}`);
         params.push(filters.resource_type);
         paramIndex++;
       }
 
-      query += ' ORDER BY r.upvotes DESC, r.created_at DESC';
+      if (conditions.length > 0) {
+        query += ` WHERE ${conditions.join(' AND ')}`;
+      }
+
+      query += ` ORDER BY r.upvotes DESC, r.created_at DESC`;
       
       if (filters?.limit) {
         query += ` LIMIT $${paramIndex}`;
@@ -343,12 +396,21 @@ export class PostgreSQLStorage {
     resource_type: string;
     category: string;
     tags?: string;
-    posted_by?: number;
+    posted_by: number;
   }) {
     try {
       const res = await pool.query(
-        'INSERT INTO resources (title, resource_url, description, resource_type, category, tags, posted_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [resourceData.title, resourceData.resource_url, resourceData.description, resourceData.resource_type, resourceData.category, resourceData.tags, resourceData.posted_by]
+        `INSERT INTO resources (title, resource_url, description, resource_type, category, tags, posted_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [
+          resourceData.title,
+          resourceData.resource_url,
+          resourceData.description,
+          resourceData.resource_type,
+          resourceData.category,
+          resourceData.tags,
+          resourceData.posted_by
+        ]
       );
       return res.rows[0];
     } catch (error) {
@@ -357,67 +419,115 @@ export class PostgreSQLStorage {
     }
   }
 
-  // Forum operations
-  async getForumPosts(forum_id?: number, limit?: number) {
+  // Forum operations (using forum_threads table)
+  async getForumThreads(limit?: number) {
     try {
       let query = `
-        SELECT fp.*, u.name as author_name, u.avatar_url as author_avatar 
-        FROM forum_posts fp 
-        LEFT JOIN users u ON fp.user_id = u.id
+        SELECT ft.*, u.name as author_name, u.avatar_url as author_avatar
+        FROM forum_threads ft 
+        LEFT JOIN users u ON ft.created_by = u.id
+        ORDER BY ft.created_at DESC
       `;
       const params: any[] = [];
-      let paramIndex = 1;
 
-      if (forum_id) {
-        query += ` WHERE fp.forum_id = $${paramIndex}`;
-        params.push(forum_id);
-        paramIndex++;
-      }
-
-      query += ' ORDER BY fp.created_at DESC';
-      
       if (limit) {
-        query += ` LIMIT $${paramIndex}`;
+        query += ` LIMIT $1`;
         params.push(limit);
       }
 
       const res = await pool.query(query, params);
       return res.rows;
     } catch (error) {
-      console.error('Error getting forum posts:', error);
+      console.error('Error getting forum threads:', error);
       return [];
     }
   }
 
-  async createForumPost(postData: {
-    forum_id: number;
-    user_id: number;
+  async createForumThread(threadData: {
+    title: string;
     content: string;
+    category: string;
+    tags?: string;
+    created_by: number;
   }) {
     try {
       const res = await pool.query(
-        'INSERT INTO forum_posts (forum_id, user_id, content) VALUES ($1, $2, $3) RETURNING *',
-        [postData.forum_id, postData.user_id, postData.content]
+        `INSERT INTO forum_threads (title, content, category, tags, created_by)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [
+          threadData.title,
+          threadData.content,
+          threadData.category,
+          threadData.tags,
+          threadData.created_by
+        ]
       );
       return res.rows[0];
     } catch (error) {
-      console.error('Error creating forum post:', error);
-      throw new Error('Failed to create forum post');
+      console.error('Error creating forum thread:', error);
+      throw new Error('Failed to create forum thread');
+    }
+  }
+
+  async getForumReplies(thread_id: number, limit?: number) {
+    try {
+      let query = `
+        SELECT fr.*, u.name as author_name, u.avatar_url as author_avatar
+        FROM forum_replies fr 
+        LEFT JOIN users u ON fr.created_by = u.id
+        WHERE fr.thread_id = $1
+        ORDER BY fr.created_at DESC
+      `;
+      const params: any[] = [thread_id];
+
+      if (limit) {
+        query += ` LIMIT $2`;
+        params.push(limit);
+      }
+
+      const res = await pool.query(query, params);
+      return res.rows;
+    } catch (error) {
+      console.error('Error getting forum replies:', error);
+      return [];
+    }
+  }
+
+  async createForumReply(replyData: {
+    thread_id: number;
+    content: string;
+    created_by: number;
+  }) {
+    try {
+      const res = await pool.query(
+        `INSERT INTO forum_replies (thread_id, content, created_by)
+         VALUES ($1, $2, $3) RETURNING *`,
+        [
+          replyData.thread_id,
+          replyData.content,
+          replyData.created_by
+        ]
+      );
+      return res.rows[0];
+    } catch (error) {
+      console.error('Error creating forum reply:', error);
+      throw new Error('Failed to create forum reply');
     }
   }
 
   // Search operations
-  async searchContent(searchQuery: string, type?: string, limit: number = 20) {
+  async searchContent(query: string, type?: string, limit: number = 20) {
     try {
-      const searchTerm = `%${searchQuery}%`;
-      const results = [];
+      const searchTerm = `%${query}%`;
+      const results: any[] = [];
 
       if (!type || type === 'internships') {
         const res = await pool.query(
-          `SELECT 'internship' as type, id, role as title, description, created_at 
+          `SELECT 'internship' as type, id, role as title, description, created_at
            FROM internships 
-           WHERE is_active = true AND (role ILIKE $1 OR description ILIKE $1 OR domain ILIKE $1) 
-           ORDER BY created_at DESC LIMIT $2`,
+           WHERE is_active = true AND (role ILIKE $1 OR description ILIKE $1 OR domain ILIKE $1)
+           ORDER BY created_at DESC
+           LIMIT $2`,
           [searchTerm, limit]
         );
         results.push(...res.rows);
@@ -425,10 +535,11 @@ export class PostgreSQLStorage {
 
       if (!type || type === 'events') {
         const res = await pool.query(
-          `SELECT 'event' as type, id, title, description, created_at 
+          `SELECT 'event' as type, id, title, description, created_at
            FROM events 
-           WHERE is_active = true AND (title ILIKE $1 OR description ILIKE $1 OR event_type ILIKE $1) 
-           ORDER BY created_at DESC LIMIT $2`,
+           WHERE is_active = true AND (title ILIKE $1 OR description ILIKE $1 OR event_type ILIKE $1)
+           ORDER BY created_at DESC
+           LIMIT $2`,
           [searchTerm, limit]
         );
         results.push(...res.rows);
@@ -436,16 +547,16 @@ export class PostgreSQLStorage {
 
       if (!type || type === 'resources') {
         const res = await pool.query(
-          `SELECT 'resource' as type, id, title, description, created_at 
+          `SELECT 'resource' as type, id, title, description, created_at
            FROM resources 
-           WHERE title ILIKE $1 OR description ILIKE $1 OR category ILIKE $1 
-           ORDER BY created_at DESC LIMIT $2`,
+           WHERE title ILIKE $1 OR description ILIKE $1 OR category ILIKE $1
+           ORDER BY created_at DESC
+           LIMIT $2`,
           [searchTerm, limit]
         );
         results.push(...res.rows);
       }
 
-      // Sort all results by created_at and limit
       return results
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, limit);

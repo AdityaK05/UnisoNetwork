@@ -42,22 +42,26 @@ CREATE TABLE IF NOT EXISTS internships (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Forums table (Real Talks)
-CREATE TABLE IF NOT EXISTS forums (
+-- Forum threads table (Real Talks)
+CREATE TABLE IF NOT EXISTS forum_threads (
     id SERIAL PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
-    description TEXT,
+    content TEXT NOT NULL,
+    category VARCHAR(50),
+    tags TEXT[], -- Array of tags
+    upvotes INTEGER DEFAULT 0,
+    reply_count INTEGER DEFAULT 0,
     created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Forum posts table
-CREATE TABLE IF NOT EXISTS forum_posts (
+-- Forum replies table
+CREATE TABLE IF NOT EXISTS forum_replies (
     id SERIAL PRIMARY KEY,
-    forum_id INTEGER REFERENCES forums(id) ON DELETE CASCADE,
-    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    thread_id INTEGER REFERENCES forum_threads(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
     upvotes INTEGER DEFAULT 0,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -118,7 +122,9 @@ CREATE INDEX IF NOT EXISTS idx_internships_company_id ON internships(company_id)
 CREATE INDEX IF NOT EXISTS idx_internships_type ON internships(type);
 CREATE INDEX IF NOT EXISTS idx_internships_domain ON internships(domain);
 CREATE INDEX IF NOT EXISTS idx_events_event_date ON events(event_date);
-CREATE INDEX IF NOT EXISTS idx_forum_posts_forum_id ON forum_posts(forum_id);
+CREATE INDEX IF NOT EXISTS idx_forum_threads_category ON forum_threads(category);
+CREATE INDEX IF NOT EXISTS idx_forum_threads_created_by ON forum_threads(created_by);
+CREATE INDEX IF NOT EXISTS idx_forum_replies_thread_id ON forum_replies(thread_id);
 CREATE INDEX IF NOT EXISTS idx_group_members_group_id ON group_members(group_id);
 CREATE INDEX IF NOT EXISTS idx_resources_category ON resources(category);
 

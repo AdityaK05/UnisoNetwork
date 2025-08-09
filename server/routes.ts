@@ -1,3 +1,4 @@
+// ...existing code...
 
 import { Express, Request, Response, NextFunction } from "express";
 import { createServer, Server } from "http";
@@ -27,6 +28,25 @@ function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Get groups the current user is a member of
+  app.get('/api/groups/my', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const groups = await storage.getGroupsForUser(req.user.id);
+      res.json(groups);
+    } catch (err) {
+      res.status(500).json({ message: 'Error fetching my groups', error: (err as Error).message });
+    }
+  });
+
+  // Join a group
+  app.post('/api/groups/:id/join', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      await storage.joinGroup(req.user.id, Number(req.params.id));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: 'Error joining group', error: (err as Error).message });
+    }
+  });
   // Users
 
   // Signup (register)
@@ -132,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const forumId = req.query.forum_id ? Number(req.query.forum_id) : undefined;
       const limit = req.query.limit ? Number(req.query.limit) : undefined;
-      const posts = await storage.getForumPosts(forumId, limit);
+      const posts = await storage.getForumReplies(forumId || 1, limit);
       res.json(posts);
     } catch (err) {
       res.status(500).json({ message: 'Error fetching forum posts', error: (err as Error).message });
@@ -142,11 +162,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/forums', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const postData = {
-        forum_id: req.body.forum_id || 1, // Default forum if not specified
-        user_id: req.user.id,
-        content: req.body.content
+        title: req.body.title || 'Forum Post',
+        content: req.body.content,
+        category: req.body.category || 'general',
+        created_by: req.user.id
       };
-      const post = await storage.createForumPost(postData);
+      const post = await storage.createForumThread(postData);
       res.json(post);
     } catch (err) {
       res.status(500).json({ message: 'Error creating forum post', error: (err as Error).message });
@@ -155,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/forums/:id/posts', async (req: Request, res: Response) => {
     try {
-      const posts = await storage.getForumPosts(Number(req.params.id));
+      const posts = await storage.getForumReplies(Number(req.params.id));
       res.json(posts);
     } catch (err) {
       res.status(500).json({ message: 'Error fetching forum posts', error: (err as Error).message });
@@ -165,11 +186,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/forums/:id/posts', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const postData = {
-        forum_id: Number(req.params.id),
-        user_id: req.user.id,
-        content: req.body.content
+        thread_id: Number(req.params.id),
+        content: req.body.content,
+        created_by: req.user.id
       };
-      const post = await storage.createForumPost(postData);
+      const post = await storage.createForumReply(postData);
       res.json(post);
     } catch (err) {
       res.status(500).json({ message: 'Error creating forum post', error: (err as Error).message });

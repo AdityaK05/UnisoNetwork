@@ -17,7 +17,7 @@ export const users = pgTable("users", {
 export const companies = pgTable("companies", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  logo: text("logo"),
+  logo_url: text("logo_url"),
   website: text("website"),
   description: text("description"),
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -82,7 +82,7 @@ export const resources = pgTable("resources", {
   category: text("category").notNull(), // academic, career, skill-building, etc.
   tags: text("tags"), // JSON array of tags
   upvotes: integer("upvotes").default(0).notNull(),
-  created_by: integer("created_by").references(() => users.id),
+  posted_by: integer("posted_by").references(() => users.id),
   created_at: timestamp("created_at").defaultNow().notNull(),
 });
 

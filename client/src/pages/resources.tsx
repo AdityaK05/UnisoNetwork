@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,17 @@ export default function ResourcesPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadForm, setUploadForm] = useState({
+    title: '',
+    description: '',
+    subject: '',
+    course: '',
+    tags: '',
+    file: null as File | null,
+  });
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     document.title = "UNiSO - Resource Swaps";
@@ -135,7 +147,40 @@ export default function ResourcesPage() {
   };
 
   const handleUpload = () => {
-    toast.success('Upload form would open here');
+    setShowUploadModal(true);
+  };
+
+  const handleUploadResource = async () => {
+    if (!uploadForm.title.trim() || !uploadForm.description.trim() || !uploadForm.subject.trim() || !uploadForm.course.trim() || !uploadForm.file) {
+      toast.error('Please fill all fields and select a file.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('title', uploadForm.title);
+      formData.append('description', uploadForm.description);
+      formData.append('subject', uploadForm.subject);
+      formData.append('course', uploadForm.course);
+      formData.append('tags', uploadForm.tags);
+      formData.append('file', uploadForm.file);
+      const res = await fetch('/api/resources', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      });
+      if (!res.ok) throw new Error('Failed to upload resource');
+      toast.success('Resource uploaded!');
+      setShowUploadModal(false);
+      setUploadForm({ title: '', description: '', subject: '', course: '', tags: '', file: null });
+      fetchResources();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload resource');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -349,6 +394,81 @@ export default function ResourcesPage() {
           </div>
         </>
       )}
+      {/* Upload Resource Modal */} 
+      <AnimatePresence>
+        {showUploadModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ scale: 0.98, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.98, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+              className="bg-white/80 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-white/10"
+            >
+              <div className="flex items-center justify-between px-5 py-3 border-b border-white/20 bg-gradient-to-r from-primary/10 to-accent/10">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-primary">Upload Resource</h3>
+                </div>
+                <Button variant="ghost" onClick={() => setShowUploadModal(false)}>
+                  Close
+                </Button>
+              </div>
+              <form className="p-6 space-y-4" onSubmit={e => { e.preventDefault(); handleUploadResource(); }}>
+                <Input
+                  placeholder="Title"
+                  value={uploadForm.title}
+                  onChange={e => setUploadForm(f => ({ ...f, title: e.target.value }))}
+                  required
+                />
+                <textarea
+                  className="w-full bg-white/60 border border-primary/10 rounded-lg px-4 py-3 h-24 resize-none focus:outline-none"
+                  placeholder="Description"
+                  value={uploadForm.description}
+                  onChange={e => setUploadForm(f => ({ ...f, description: e.target.value }))}
+                  required
+                />
+                <Input
+                  placeholder="Subject (e.g. Mathematics)"
+                  value={uploadForm.subject}
+                  onChange={e => setUploadForm(f => ({ ...f, subject: e.target.value }))}
+                  required
+                />
+                <Input
+                  placeholder="Course (e.g. BSc 2nd Year)"
+                  value={uploadForm.course}
+                  onChange={e => setUploadForm(f => ({ ...f, course: e.target.value }))}
+                  required
+                />
+                <Input
+                  placeholder="Tags (comma separated)"
+                  value={uploadForm.tags}
+                  onChange={e => setUploadForm(f => ({ ...f, tags: e.target.value }))}
+                />
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={e => setUploadForm(f => ({ ...f, file: e.target.files ? e.target.files[0] : null }))}
+                  />
+                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    {uploadForm.file ? uploadForm.file.name : 'Select File'}
+                  </Button>
+                  {uploadForm.file && <span className="text-xs text-gray-500">{(uploadForm.file.size / 1024).toFixed(1)} KB</span>}
+                </div>
+                <div className="flex gap-2 justify-end mt-2">
+                  <Button type="button" variant="outline" onClick={() => setShowUploadModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="default" disabled={uploading}>
+                    {uploading ? 'Uploading...' : 'Upload'}
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </MainLayout>
   );
 }

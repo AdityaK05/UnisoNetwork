@@ -1,4 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'wouter';
+import { Dialog, DialogTrigger, DialogContent } from '@/components/ui/dialog';
+import { useAuth } from '../hooks/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,24 +19,35 @@ interface CommunityGroup {
   gradientClass: string;
 }
 
-// Mock data for community groups
-const COMMUNITY_GROUPS: CommunityGroup[] = [
-  // This will be replaced by backend data
-];
+// No mock data, all from backend
+// Group creation form initial state
+const GROUP_FORM_INITIAL = {
+  name: '',
+  description: '',
+  interests: [],
+  emoji: '🫂',
+};
 
 // Available interests for filtering
 const INTERESTS = ["All", "Academic", "Art", "Business", "Coding", "Creative", "Design", "Entertainment", "Fitness", "Health", "Innovation", "Movies", "Music", "Nature", "Plants", "Study", "Tech"];
 
 export default function GroupsPage() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<CommunityGroup[]>([]);
+  const [myGroups, setMyGroups] = useState<number[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [groupForm, setGroupForm] = useState<any>(GROUP_FORM_INITIAL);
 
   useEffect(() => {
     document.title = "UNiSO - Community Groups";
     fetchGroups();
+    fetchMyGroups();
+    fetchFavorites();
   }, []);
 
   const fetchGroups = async () => {
@@ -41,7 +55,6 @@ export default function GroupsPage() {
       setLoading(true);
       const response = await fetch('/api/groups');
       const data = await response.json();
-      // Map backend data to CommunityGroup type
       const formattedGroups = data.map((group: any) => ({
         id: group.id || group.$id,
         name: group.name,
@@ -53,11 +66,32 @@ export default function GroupsPage() {
       }));
       setGroups(formattedGroups);
     } catch (error) {
-      console.error('Error fetching groups:', error);
       toast.error('Failed to load groups');
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchMyGroups = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch('/api/groups/my', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      const data = await res.json();
+      setMyGroups(data.map((g: any) => g.id));
+    } catch {}
+  };
+
+  const fetchFavorites = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch('/api/groups/favorites', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      const data = await res.json();
+      setFavorites(data.map((g: any) => g.id));
+    } catch {}
   };
 
   const toggleInterest = (interest: string) => {
@@ -73,31 +107,46 @@ export default function GroupsPage() {
     );
   };
 
-  const toggleFavorite = (id: number) => {
-    setFavorites(prev =>
-      prev.includes(id)
-        ? prev.filter(favId => favId !== id)
-        : [...prev, id]
-    );
+  const toggleFavorite = async (id: number) => {
+    if (!user) return toast.error('Login to favorite groups');
+    const isFav = favorites.includes(id);
+    setFavorites(prev => isFav ? prev.filter(favId => favId !== id) : [...prev, id]);
+    try {
+      await fetch(`/api/groups/${id}/favorite`, {
+        method: isFav ? 'DELETE' : 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+    } catch {
+      toast.error('Failed to update favorite');
+    }
   };
 
-  const handleJoinGroup = (groupId: number) => {
-    const groupName = COMMUNITY_GROUPS.find(g => g.id === groupId)?.name;
-    toast.success(`Joined ${groupName || 'group'}!`);
+  const handleJoinGroup = async (groupId: number) => {
+    if (!user) return toast.error('Login to join groups');
+    try {
+      await fetch(`/api/groups/${groupId}/join`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      setMyGroups(prev => [...prev, groupId]);
+      toast.success('Joined group!');
+    } catch {
+      toast.error('Failed to join group');
+    }
   };
 
+  const [showOnlyMine, setShowOnlyMine] = useState(false);
   const filteredGroups = useMemo(() => {
     return groups.filter(group => {
       const matchesSearch = searchQuery === '' ||
         group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         group.tagline.toLowerCase().includes(searchQuery.toLowerCase());
-
       const matchesInterests = selectedInterests.length === 0 ||
         selectedInterests.some(interest => group.interests.includes(interest));
-
-      return matchesSearch && matchesInterests;
+      const matchesMine = !showOnlyMine || myGroups.includes(group.id);
+      return matchesSearch && matchesInterests && matchesMine;
     });
-  }, [searchQuery, selectedInterests]);
+  }, [searchQuery, selectedInterests, showOnlyMine, myGroups, groups]);
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -106,6 +155,87 @@ export default function GroupsPage() {
 
   return (
     <MainLayout>
+      {/* Create Group Modal */}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogTrigger asChild>
+          <Button
+            className="mt-6 md:mt-0 bg-white text-primary hover:bg-white/90 rounded-full flex items-center gap-2 shadow-lg"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Create New Group
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setCreating(true);
+              try {
+                const res = await fetch('/api/groups', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                  },
+                  body: JSON.stringify(groupForm),
+                });
+                if (!res.ok) throw new Error('Failed to create group');
+                setGroupForm(GROUP_FORM_INITIAL);
+                setShowCreateModal(false);
+                fetchGroups();
+                toast.success('Group created!');
+              } catch {
+                toast.error('Failed to create group');
+              } finally {
+                setCreating(false);
+              }
+            }}
+            className="space-y-4"
+          >
+            <h2 className="text-xl font-bold">Create New Group</h2>
+            <input
+              className="w-full border rounded p-2"
+              placeholder="Group Name"
+              value={groupForm.name}
+              onChange={e => setGroupForm({ ...groupForm, name: e.target.value })}
+              required
+            />
+            <textarea
+              className="w-full border rounded p-2"
+              placeholder="Description"
+              value={groupForm.description}
+              onChange={e => setGroupForm({ ...groupForm, description: e.target.value })}
+            />
+            <input
+              className="w-full border rounded p-2"
+              placeholder="Emoji (e.g. 🫂)"
+              value={groupForm.emoji}
+              onChange={e => setGroupForm({ ...groupForm, emoji: e.target.value })}
+              maxLength={2}
+            />
+            <div className="flex flex-wrap gap-2">
+              {INTERESTS.filter(i => i !== 'All').map(interest => (
+                <Badge
+                  key={interest}
+                  onClick={() => setGroupForm({
+                    ...groupForm,
+                    interests: groupForm.interests.includes(interest)
+                      ? groupForm.interests.filter((i: string) => i !== interest)
+                      : [...groupForm.interests, interest],
+                  })}
+                  className={`cursor-pointer ${groupForm.interests.includes(interest) ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700'}`}
+                >
+                  {interest}
+                </Badge>
+              ))}
+            </div>
+            <Button type="submit" disabled={creating} className="w-full">
+              {creating ? 'Creating...' : 'Create Group'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
       {/* Header with gradient background */}
       <div className="bg-gradient-hero text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-72 h-72 bg-secondary/20 rounded-full filter blur-3xl mix-blend-multiply"></div>
@@ -119,13 +249,14 @@ export default function GroupsPage() {
               </h1>
             </div>
 
-            <Button
-              className="mt-6 md:mt-0 bg-white text-primary hover:bg-white/90 rounded-full flex items-center gap-2 shadow-lg"
-              onClick={() => toast.success('Create group form would open here')}
-            >
-              <Plus className="h-4 w-4" />
-              Create New Group
-            </Button>
+            <Link href="/create-group">
+              <Button
+                className="mt-6 md:mt-0 bg-white text-primary hover:bg-white/90 rounded-full flex items-center gap-2 shadow-lg"
+              >
+                <Plus className="h-4 w-4" />
+                Create New Group
+              </Button>
+            </Link>
           </div>
 
           <p className="mt-3 text-xl text-white/80">
@@ -190,10 +321,20 @@ export default function GroupsPage() {
               </h2>
 
               <div className="flex gap-2">
-                <Button variant="outline" className="text-gray-600">
+                <Button
+                  variant="outline"
+                  className={`text-gray-600 ${showOnlyMine ? 'bg-primary/10 border-primary' : ''}`}
+                  onClick={() => setShowOnlyMine(v => !v)}
+                >
                   <Users className="h-4 w-4 mr-2" />
-                  My Groups
+                  My Groups (Filter)
                 </Button>
+                <Link href="/my-groups">
+                  <Button variant="secondary" className="text-gray-600">
+                    <Users className="h-4 w-4 mr-2" />
+                    My Groups Page
+                  </Button>
+                </Link>
               </div>
             </div>
 

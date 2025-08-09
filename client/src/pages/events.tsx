@@ -140,6 +140,30 @@ export default function EventsPage() {
 
             <Button
               className="mt-6 md:mt-0 bg-white text-primary hover:bg-white/90 rounded-full flex items-center gap-2 shadow-lg"
+              onClick={() => {
+                if (filteredEvents.length === 0) {
+                  toast.error('No events to add to calendar.');
+                  return;
+                }
+                // Generate ICS file for all filtered events
+                const icsContent = [
+                  'BEGIN:VCALENDAR',
+                  'VERSION:2.0',
+                  'PRODID:-//UNiSO//Campus Events//EN',
+                  ...filteredEvents.map(event => `BEGIN:VEVENT\nSUMMARY:${event.title}\nDESCRIPTION:${event.description}\nLOCATION:${event.location}\nDTSTART:${event.date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')}\nDTEND:${new Date(event.date.getTime() + 60*60*1000).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')}\nEND:VEVENT`),
+                  'END:VCALENDAR'
+                ].join('\r\n');
+                const blob = new Blob([icsContent], { type: 'text/calendar' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'uniso-events.ics';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                toast.success('Calendar file downloaded!');
+              }}
             >
               <Calendar className="h-4 w-4" />
               Add to Calendar
@@ -353,6 +377,7 @@ export default function EventsPage() {
                     setSearchQuery('');
                     setSelectedDate('All');
                     setSelectedCategory('All');
+                    toast.success('Filters reset!');
                   }}
                 >
                   Reset all filters
