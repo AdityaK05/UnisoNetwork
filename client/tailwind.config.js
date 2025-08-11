@@ -1,11 +1,7 @@
-<<<<<<< HEAD
 /**
  * Tailwind config for the client build. Mirrors the root config so utilities like
  * `border-border`, `bg-background`, and `text-foreground` are available during build.
  */
-=======
-/** @type {import('tailwindcss').Config} */
->>>>>>> 5d39880204f59230276f52248d3fc12c6732105d
 module.exports = {
   darkMode: ["class"],
   content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
@@ -17,7 +13,6 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
-<<<<<<< HEAD
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -28,13 +23,6 @@ module.exports = {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
-=======
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
->>>>>>> 5d39880204f59230276f52248d3fc12c6732105d
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -43,13 +31,6 @@ module.exports = {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
         },
-<<<<<<< HEAD
-=======
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
->>>>>>> 5d39880204f59230276f52248d3fc12c6732105d
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
@@ -58,7 +39,6 @@ module.exports = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
-<<<<<<< HEAD
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
@@ -97,21 +77,6 @@ module.exports = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-=======
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
-      },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
->>>>>>> 5d39880204f59230276f52248d3fc12c6732105d
       },
     },
   },
