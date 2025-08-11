@@ -72,9 +72,29 @@ export class PostgreSQLStorage {
         [userData.name, userData.email, userData.password_hash, userData.avatar_url || null]
       );
       return res.rows[0];
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw new Error('Failed to create user');
+    } catch (err: any) {
+      // Log full error details
+      console.error('Error creating user:', err);
+      if (err && err.message) console.error('Message:', err.message);
+      if (err && err.code) console.error('Code:', err.code);
+      if (err && err.stack) console.error('Stack:', err.stack);
+
+      // Unique constraint violation (e.g., email already exists)
+      if (err.code === '23505') {
+        throw new Error('Email already registered');
+      }
+      // Not-null violation
+      if (err.code === '23502') {
+        // err.column is not always present, so try to extract from err.message
+        let field = err.column;
+        if (!field && err.message) {
+          const match = err.message.match(/null value in column "([^"]+)"/);
+          if (match) field = match[1];
+        }
+        throw new Error(`Missing required field: ${field || 'unknown'}`);
+      }
+      // Other errors
+      throw new Error(`Failed to create user: ${err.message || err}`);
     }
   }
 
