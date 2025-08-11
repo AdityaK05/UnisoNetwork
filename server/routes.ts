@@ -58,6 +58,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.createUser({ name, email, password_hash: hashed, avatar_url });
       res.json({ id: user.id, name: user.name, email: user.email });
     } catch (err) {
+      console.error('Signup failed:', err);
+      if (err instanceof Error && err.stack) {
+        console.error('Stack trace:', err.stack);
+      }
       res.status(500).json({ message: 'Signup failed', error: (err as Error).message });
     }
   });
@@ -74,6 +78,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
       res.json({ token, user: { id: user.id, name: user.name, email: user.email, avatar_url: user.avatar_url } });
     } catch (err) {
+      console.error('Login failed:', err);
+      if (err instanceof Error && err.stack) {
+        console.error('Stack trace:', err.stack);
+      }
       res.status(500).json({ message: 'Login failed', error: (err as Error).message });
     }
   });
