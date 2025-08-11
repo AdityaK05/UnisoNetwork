@@ -16,7 +16,8 @@ app.use(express.urlencoded({ extended: false }));
 // Use CORS middleware and allow all deployed frontend origins
 const allowedOrigins = [
   "https://uniso-6y1vw9byd-adityak05s-projects.vercel.app",
-  "https://uniso-d46oauvuy-adityak05s-projects.vercel.app"
+  "https://uniso-d46oauvuy-adityak05s-projects.vercel.app",
+  "https://uniso.vercel.app"
 ];
 app.use(cors({
   origin: function(origin, callback) {
