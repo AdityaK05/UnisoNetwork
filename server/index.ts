@@ -13,32 +13,9 @@ app.use(express.urlencoded({ extended: false }));
 
 
 
-// Use CORS middleware and allow all deployed frontend origins
-const allowedOrigins = [
-  "https://uniso-6y1vw9byd-adityak05s-projects.vercel.app",
-  "https://uniso-d46oauvuy-adityak05s-projects.vercel.app",
-  "https://uniso.vercel.app",
-  "https://uniso-ctduj66ll-adityak05s-projects.vercel.app"
-];
-app.use(cors({
-  origin: function(origin, callback) {
-    // allow requests with no origin (like mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-}));
-
-// Explicitly handle preflight OPTIONS requests for all routes
-app.options('*', cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-}));
+// Use CORS middleware - allow all origins (for debugging; restrict in production)
+app.use(cors({ origin: true, credentials: true }));
+app.options('*', cors({ origin: true, credentials: true }));
 
 app.use((req, res, next) => {
   const start = Date.now();
