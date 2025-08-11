@@ -17,7 +17,8 @@ app.use(express.urlencoded({ extended: false }));
 const allowedOrigins = [
   "https://uniso-6y1vw9byd-adityak05s-projects.vercel.app",
   "https://uniso-d46oauvuy-adityak05s-projects.vercel.app",
-  "https://uniso.vercel.app"
+  "https://uniso.vercel.app",
+  "https://uniso-ctduj66ll-adityak05s-projects.vercel.app"
 ];
 app.use(cors({
   origin: function(origin, callback) {
