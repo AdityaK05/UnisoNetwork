@@ -1,6 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, log } from "./vite";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import pool from "./db/index";
 
 const app = express();
 app.use(express.json());
@@ -51,6 +55,26 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Ensure database schema exists (runs once when tables are missing)
+  async function ensureDatabaseSchema() {
+    try {
+      const check = await pool.query("SELECT to_regclass('public.users') as t");
+      const usersTable = check.rows?.[0]?.t;
+      if (!usersTable) {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const schemaPath = path.join(__dirname, "db", "schema.sql");
+        const schemaSql = fs.readFileSync(schemaPath, "utf-8");
+        await pool.query(schemaSql);
+        log("database schema created");
+      }
+    } catch (err) {
+      console.error("Failed ensuring database schema:", err);
+    }
+  }
+
+  await ensureDatabaseSchema();
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
