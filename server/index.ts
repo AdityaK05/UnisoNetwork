@@ -7,15 +7,21 @@ import path from "path";
 import { fileURLToPath } from "url";
 import pool from "./db/index";
 
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Root route for friendly message
+app.get('/', (req, res) => {
+  res.send('UNiSO API is running!');
+});
 
 
-// Use CORS middleware - allow all origins (for debugging; restrict in production)
-app.use(cors({ origin: true, credentials: true }));
-app.options('*', cors({ origin: true, credentials: true }));
+
+// Use CORS middleware - allow Vite dev server (localhost:5173) for frontend-backend integration
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.options('*', cors({ origin: 'http://localhost:5173', credentials: true }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -85,7 +91,7 @@ app.use((req, res, next) => {
   }
 
   const port = 5000;
-  server.listen(port, "0.0.0.0", () => {
-    log(`serving on 0.0.0.0:${port} (use Render's provided URL in production)`);
+  server.listen(port, "localhost", () => {
+    log(`serving on http://localhost:${port}`);
   });
 })();
