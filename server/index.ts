@@ -20,21 +20,22 @@ app.get('/', (req, res) => {
 
 
 
-// Use CORS middleware - allow Vite dev server (localhost:5173) and deployed frontend
+// Use CORS middleware - allow Vite dev server (localhost:5173) and deployed frontend (https://uniso.vercel.app)
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://your-frontend.vercel.app', // Replace with your actual Vercel domain
+  'https://uniso.vercel.app',
 ];
 app.use(cors({
   origin: (origin, callback) => {
-    // allow requests with no origin (like mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.options('*', cors({
   origin: (origin, callback) => {
@@ -44,7 +45,9 @@ app.options('*', cors({
     }
     return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use((req, res, next) => {
