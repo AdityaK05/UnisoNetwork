@@ -19,9 +19,33 @@ app.get('/', (req, res) => {
 
 
 
-// Use CORS middleware - allow Vite dev server (localhost:5173) for frontend-backend integration
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
-app.options('*', cors({ origin: 'http://localhost:5173', credentials: true }));
+
+// Use CORS middleware - allow Vite dev server (localhost:5173) and deployed frontend
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://your-frontend.vercel.app', // Replace with your actual Vercel domain
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
+app.options('*', cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -90,8 +114,8 @@ app.use((req, res, next) => {
   // serveStatic(app); // Removed: no static frontend serving in API-only deployment
   }
 
-  const port = 5000;
-  server.listen(port, "localhost", () => {
-    log(`serving on http://localhost:${port}`);
+  const port = process.env.PORT || 5000;
+  server.listen(port, () => {
+    log(`serving on port ${port}`);
   });
 })();
