@@ -2,19 +2,26 @@ import React, { useState } from 'react';
 import { useAuth } from '../hooks/AuthContext';
 import { Link, useLocation } from 'wouter';
 import authService from '../services/auth';
+import OtpVerification from '../components/auth/OtpVerification';
+
+type SignUpStep = 'form' | 'otp' | 'completed';
 
 const SignUp: React.FC = () => {
+    const [step, setStep] = useState<SignUpStep>('form');
     const [formData, setFormData] = useState({
         name: '',
         email: '',
+        phone: '',
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        otpMethod: 'email' as 'email' | 'sms'
     });
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const [, setLocation] = useLocation();
     const { login } = useAuth();
 
-    const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
 
@@ -23,11 +30,47 @@ const SignUp: React.FC = () => {
             return;
         }
 
+        if (formData.otpMethod === 'sms' && !formData.phone) {
+            setError('Phone number is required for SMS verification');
+            return;
+        }
+
+        if (formData.otpMethod === 'email' && !formData.email) {
+            setError('Email is required for email verification');
+            return;
+        }
+
         try {
-            const response = await authService.register({
+            setIsLoading(true);
+            // Send OTP
+            await authService.sendOtp({
+                email: formData.otpMethod === 'email' ? formData.email : undefined,
+                phone: formData.otpMethod === 'sms' ? formData.phone : undefined,
+                type: formData.otpMethod
+            });
+            setStep('otp');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to send OTP. Please try again.');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleOtpVerify = async (otpCode: string) => {
+        try {
+            setIsLoading(true);
+            // Verify OTP and complete registration
+            const response = await authService.verifyOtpAndRegister({
                 name: formData.name,
                 email: formData.email,
-                password: formData.password
+                phone: formData.phone || undefined,
+                password: formData.password,
+                otp_code: otpCode,
+                otp_type: formData.otpMethod
             });
             
             // Use login function from AuthContext
@@ -39,10 +82,42 @@ const SignUp: React.FC = () => {
             if (err instanceof Error) {
                 setError(err.message);
             } else {
-                setError('Sign up failed due to an unknown error.');
+                setError('OTP verification failed. Please try again.');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleResendOtp = async () => {
+        try {
+            setError('');
+            await authService.sendOtp({
+                email: formData.otpMethod === 'email' ? formData.email : undefined,
+                phone: formData.otpMethod === 'sms' ? formData.phone : undefined,
+                type: formData.otpMethod
+            });
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to resend OTP. Please try again.');
             }
         }
     };
+
+    if (step === 'otp') {
+        return (
+            <OtpVerification
+                contactInfo={formData.otpMethod === 'email' ? formData.email : formData.phone}
+                contactType={formData.otpMethod}
+                onVerify={handleOtpVerify}
+                onResend={handleResendOtp}
+                isLoading={isLoading}
+                error={error}
+            />
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center px-4">
@@ -52,7 +127,7 @@ const SignUp: React.FC = () => {
 
                 {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-                <form onSubmit={handleSignUp} className="space-y-4 text-left">
+                <form onSubmit={handleFormSubmit} className="space-y-4 text-left">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                         <input
@@ -62,6 +137,7 @@ const SignUp: React.FC = () => {
                             value={formData.name}
                             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                             required
+                            disabled={isLoading}
                         />
                     </div>
                     <div>
@@ -73,6 +149,18 @@ const SignUp: React.FC = () => {
                             value={formData.email}
                             onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                             required
+                            disabled={isLoading}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number (Optional)</label>
+                        <input
+                            type="tel"
+                            className="w-full px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
+                            placeholder="Enter your phone number"
+                            value={formData.phone}
+                            onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                            disabled={isLoading}
                         />
                     </div>
                     <div>
@@ -84,6 +172,7 @@ const SignUp: React.FC = () => {
                             value={formData.password}
                             onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                             required
+                            disabled={isLoading}
                         />
                     </div>
                     <div>
@@ -95,13 +184,44 @@ const SignUp: React.FC = () => {
                             value={formData.confirmPassword}
                             onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                             required
+                            disabled={isLoading}
                         />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Verification Method</label>
+                        <div className="flex space-x-4">
+                            <label className="flex items-center">
+                                <input
+                                    type="radio"
+                                    name="otpMethod"
+                                    value="email"
+                                    checked={formData.otpMethod === 'email'}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, otpMethod: e.target.value as 'email' | 'sms' }))}
+                                    className="mr-2"
+                                    disabled={isLoading}
+                                />
+                                <span className="text-sm">Email</span>
+                            </label>
+                            <label className="flex items-center">
+                                <input
+                                    type="radio"
+                                    name="otpMethod"
+                                    value="sms"
+                                    checked={formData.otpMethod === 'sms'}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, otpMethod: e.target.value as 'email' | 'sms' }))}
+                                    className="mr-2"
+                                    disabled={isLoading || !formData.phone}
+                                />
+                                <span className="text-sm">SMS</span>
+                            </label>
+                        </div>
                     </div>
                     <button
                         type="submit"
-                        className="w-full py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold rounded-full hover:opacity-90 transition"
+                        disabled={isLoading}
+                        className="w-full py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold rounded-full hover:opacity-90 transition disabled:opacity-50"
                     >
-                        Sign Up
+                        {isLoading ? 'Sending OTP...' : 'Sign Up'}
                     </button>
                 </form>
 

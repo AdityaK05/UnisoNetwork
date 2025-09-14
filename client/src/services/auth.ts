@@ -10,6 +10,21 @@ export interface RegisterData {
   password: string;
 }
 
+export interface RegisterWithOtpData {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  otp_code: string;
+  otp_type: 'email' | 'sms';
+}
+
+export interface SendOtpData {
+  email?: string;
+  phone?: string;
+  type: 'email' | 'sms';
+}
+
 export interface User {
   id: string;
   name: string;
@@ -93,6 +108,47 @@ export const authService = {
   async logout(): Promise<void> {
     localStorage.removeItem('token');
     // No need to call backend logout as we're using stateless JWT
+  },
+
+  async sendOtp(data: SendOtpData): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...data,
+        channel: data.type, // Map type to channel for backend compatibility
+        purpose: 'signup' // Add purpose parameter
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to send OTP');
+    }
+
+    return response.json();
+  },
+
+  async verifyOtpAndRegister(data: RegisterWithOtpData): Promise<AuthResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp-register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        password_hash: data.password, // Backend expects password_hash for hashing
+        otp_code: data.otp_code,
+        otp_type: data.otp_type
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'OTP verification and registration failed');
+    }
+
+    return response.json();
   }
 };
 
