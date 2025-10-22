@@ -1,0 +1,832 @@
+// ...existing code...
+import { db } from './db/index';
+// @ts-ignore
+import pool from './db/index.cjs';
+
+export class PostgreSQLStorage {
+  // Get groups for a user (member or creator)
+  async getGroupsForUser(userId: number) {
+    try {
+      const res = await pool.query(
+        `SELECT g.* FROM groups g
+         LEFT JOIN group_members gm ON g.id = gm.group_id
+         WHERE g.created_by = $1 OR gm.user_id = $1
+         GROUP BY g.id`
+        , [userId]
+      );
+      return res.rows;
+    } catch (error) {
+      console.error('Error getting user groups:', error);
+      return [];
+    }
+  }
+
+  // Join a group
+  async joinGroup(userId: number, groupId: number) {
+    try {
+      // Check if already a member
+      const check = await pool.query(
+        'SELECT id FROM group_members WHERE user_id = $1 AND group_id = $2',
+        [userId, groupId]
+      );
+      if (check.rows.length > 0) return;
+      await pool.query(
+        'INSERT INTO group_members (user_id, group_id, role) VALUES ($1, $2, $3)',
+        [userId, groupId, 'member']
+      );
+    } catch (error) {
+      console.error('Error joining group:', error);
+      throw new Error('Failed to join group');
+    }
+  }
+  // User operations
+  async getUser(id: number) {
+    try {
+      const res = await pool.query('SELECT id, name, email, avatar_url, created_at FROM users WHERE id = $1', [id]);
+      return res.rows[0] || null;
+    } catch (error) {
+      console.error('Error getting user:', error);
+      return null;
+    }
+  }
+
+  async getUserByEmail(email: string) {
+    try {
+      const res = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+      return res.rows[0] || null;
+    } catch (error) {
+      console.error('Error getting user by email:', error);
+      return null;
+    }
+  }
+
+  async createUser(userData: { 
+    name: string; 
+    email: string; 
+    password_hash: string; 
+    avatar_url?: string;
+    phone_number?: string;
+    phone_verified?: boolean;
+  }) {
+    try {
+      // Check if email already exists to provide a cleaner error message
+      const existing = await pool.query('SELECT id FROM users WHERE email = $1', [userData.email]);
+      if (existing.rows.length > 0) {
+        throw new Error('Email already registered');
+      }
+      
+      // Check if phone number already exists
+      if (userData.phone_number) {
+        const phoneExists = await pool.query(
+          'SELECT id FROM users WHERE phone_number = $1',
+          [userData.phone_number]
+        );
+        if (phoneExists.rows.length > 0) {
+          throw new Error('Phone number already registered');
+        }
+      }
+      
+      const res = await pool.query(
+        `INSERT INTO users (name, email, password_hash, avatar_url, phone_number, phone_verified) 
+         VALUES ($1, $2, $3, $4, $5, $6) 
+         RETURNING id, name, email, avatar_url, phone_number, phone_verified, created_at`,
+        [
+          userData.name, 
+          userData.email, 
+          userData.password_hash, 
+          userData.avatar_url || null,
+          userData.phone_number || null,
+          userData.phone_verified || false
+        ]
+      );
+      return res.rows[0];
+    } catch (err: any) {
+      // Log full error details
+      console.error('Error creating user:', err);
+      if (err && err.message) console.error('Message:', err.message);
+      if (err && err.code) console.error('Code:', err.code);
+      if (err && err.stack) console.error('Stack:', err.stack);
+
+      // Unique constraint violation (e.g., email already exists)
+      if (err.code === '23505') {
+        throw new Error('Email already registered');
+      }
+      // Not-null violation
+      if (err.code === '23502') {
+        // err.column is not always present, so try to extract from err.message
+        let field = err.column;
+        if (!field && err.message) {
+          const match = err.message.match(/null value in column "([^"]+)"/);
+          if (match) field = match[1];
+        }
+        throw new Error(`Missing required field: ${field || 'unknown'}`);
+      }
+      // Other errors
+      throw new Error(`Failed to create user: ${err.message || err}`);
+    }
+  }
+
+  // Company operations
+  async getCompanies() {
+    try {
+      const res = await pool.query('SELECT * FROM companies ORDER BY name');
+      return res.rows;
+    } catch (error) {
+      console.error('Error getting companies:', error);
+      return [];
+    }
+  }
+
+  async createCompany(companyData: {
+    name: string;
+    logo_url?: string;
+    website?: string;
+    description?: string;
+  }) {
+    try {
+      const res = await pool.query(
+        'INSERT INTO companies (name, logo_url, website, description) VALUES ($1, $2, $3, $4) RETURNING *',
+        [companyData.name, companyData.logo_url, companyData.website, companyData.description]
+      );
+      return res.rows[0];
+    } catch (error) {
+      console.error('Error creating company:', error);
+      throw new Error('Failed to create company');
+    }
+  }
+
+  // Internship operations
+  async getInternships(filters?: {
+    type?: string;
+    domain?: string;
+    location?: string;
+    limit?: number;
+  }) {
+    try {
+      let query = `
+        SELECT i.*, c.name as company_name, c.logo_url as company_logo, c.website as company_website
+        FROM internships i 
+        LEFT JOIN companies c ON i.company_id = c.id 
+        WHERE i.is_active = true
+      `;
+      const params: any[] = [];
+      let paramIndex = 1;
+
+      if (filters?.type) {
+        query += ` AND i.type = $${paramIndex}`;
+        params.push(filters.type);
+        paramIndex++;
+      }
+      if (filters?.domain) {
+        query += ` AND i.domain = $${paramIndex}`;
+        params.push(filters.domain);
+        paramIndex++;
+      }
+      if (filters?.location) {
+        query += ` AND i.location ILIKE $${paramIndex}`;
+        params.push(`%${filters.location}%`);
+        paramIndex++;
+      }
+
+      query += ` ORDER BY i.posted_date DESC`;
+      
+      if (filters?.limit) {
+        query += ` LIMIT $${paramIndex}`;
+        params.push(filters.limit);
+      }
+
+      const res = await pool.query(query, params);
+      return res.rows;
+    } catch (error) {
+      console.error('Error getting internships:', error);
+      return [];
+    }
+  }
+
+  async createInternship(internshipData: {
+    role: string;
+    company_id: number;
+    location: string;
+    type: string;
+    domain: string;
+    description: string;
+    requirements?: string;
+    salary_range?: string;
+    apply_link: string;
+    deadline?: Date;
+    logo?: string;
+    company_color?: string;
+    created_by: number;
+  }) {
+    try {
+      const res = await pool.query(
+        `INSERT INTO internships 
+         (role, company_id, location, type, domain, description, requirements, salary_range, apply_link, deadline, logo, company_color, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+        [
+          internshipData.role,
+          internshipData.company_id,
+          internshipData.location,
+          internshipData.type,
+          internshipData.domain,
+          internshipData.description,
+          internshipData.requirements,
+          internshipData.salary_range,
+          internshipData.apply_link,
+          internshipData.deadline,
+          internshipData.logo,
+          internshipData.company_color,
+          internshipData.created_by
+        ]
+      );
+      return res.rows[0];
+    } catch (error) {
+      console.error('Error creating internship:', error);
+      throw new Error('Failed to create internship');
+    }
+  }
+
+  // Event operations
+  async getEvents(filters?: {
+    event_type?: string;
+    limit?: number;
+  }) {
+    try {
+      let query = `
+        SELECT e.*, u.name as creator_name
+        FROM events e 
+        LEFT JOIN users u ON e.created_by = u.id 
+        WHERE e.is_active = true
+      `;
+      const params: any[] = [];
+      let paramIndex = 1;
+
+      if (filters?.event_type) {
+        query += ` AND e.event_type = $${paramIndex}`;
+        params.push(filters.event_type);
+        paramIndex++;
+      }
+
+      query += ` ORDER BY e.event_date ASC`;
+      
+      if (filters?.limit) {
+        query += ` LIMIT $${paramIndex}`;
+        params.push(filters.limit);
+      }
+
+      const res = await pool.query(query, params);
+      return res.rows;
+    } catch (error) {
+      console.error('Error getting events:', error);
+      return [];
+    }
+  }
+
+  async createEvent(eventData: {
+    title: string;
+    description: string;
+    event_date: Date;
+    location: string;
+    event_type: string;
+    organizer: string;
+    registration_link?: string;
+    max_participants?: number;
+    created_by: number;
+  }) {
+    try {
+      const res = await pool.query(
+        `INSERT INTO events 
+         (title, description, event_date, location, event_type, organizer, registration_link, max_participants, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [
+          eventData.title,
+          eventData.description,
+          eventData.event_date,
+          eventData.location,
+          eventData.event_type,
+          eventData.organizer,
+          eventData.registration_link,
+          eventData.max_participants,
+          eventData.created_by
+        ]
+      );
+      return res.rows[0];
+    } catch (error) {
+      console.error('Error creating event:', error);
+      throw new Error('Failed to create event');
+    }
+  }
+
+  // Group operations
+  async getGroups(filters?: {
+    category?: string;
+    privacy?: string;
+    limit?: number;
+  }) {
+    try {
+      let query = `
+        SELECT g.*, u.name as creator_name
+        FROM groups g 
+        LEFT JOIN users u ON g.created_by = u.id
+      `;
+      const params: any[] = [];
+      const conditions: string[] = [];
+      let paramIndex = 1;
+
+      if (filters?.category) {
+        conditions.push(`g.category = $${paramIndex}`);
+        params.push(filters.category);
+        paramIndex++;
+      }
+      if (filters?.privacy) {
+        conditions.push(`g.privacy = $${paramIndex}`);
+        params.push(filters.privacy);
+        paramIndex++;
+      }
+
+      if (conditions.length > 0) {
+        query += ` WHERE ${conditions.join(' AND ')}`;
+      }
+
+      query += ` ORDER BY g.created_at DESC`;
+      
+      if (filters?.limit) {
+        query += ` LIMIT $${paramIndex}`;
+        params.push(filters.limit);
+      }
+
+      const res = await pool.query(query, params);
+      return res.rows;
+    } catch (error) {
+      console.error('Error getting groups:', error);
+      return [];
+    }
+  }
+
+  async createGroup(groupData: {
+    name: string;
+    description: string;
+    category: string;
+    privacy: string;
+    max_members?: number;
+    created_by: number;
+  }) {
+    try {
+      const res = await pool.query(
+        `INSERT INTO groups (name, description, category, privacy, max_members, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [
+          groupData.name,
+          groupData.description,
+          groupData.category,
+          groupData.privacy,
+          groupData.max_members,
+          groupData.created_by
+        ]
+      );
+      return res.rows[0];
+    } catch (error) {
+      console.error('Error creating group:', error);
+      throw new Error('Failed to create group');
+    }
+  }
+
+  // Resource operations
+  async getResources(filters?: {
+    category?: string;
+    resource_type?: string;
+    limit?: number;
+  }) {
+    try {
+      let query = `
+        SELECT r.*, u.name as poster_name
+        FROM resources r 
+        LEFT JOIN users u ON r.posted_by = u.id
+      `;
+      const params: any[] = [];
+      const conditions: string[] = [];
+      let paramIndex = 1;
+
+      if (filters?.category) {
+        conditions.push(`r.category = $${paramIndex}`);
+        params.push(filters.category);
+        paramIndex++;
+      }
+      if (filters?.resource_type) {
+        conditions.push(`r.resource_type = $${paramIndex}`);
+        params.push(filters.resource_type);
+        paramIndex++;
+      }
+
+      if (conditions.length > 0) {
+        query += ` WHERE ${conditions.join(' AND ')}`;
+      }
+
+      query += ` ORDER BY r.upvotes DESC, r.created_at DESC`;
+      
+      if (filters?.limit) {
+        query += ` LIMIT $${paramIndex}`;
+        params.push(filters.limit);
+      }
+
+      const res = await pool.query(query, params);
+      return res.rows;
+    } catch (error) {
+      console.error('Error getting resources:', error);
+      return [];
+    }
+  }
+
+  async createResource(resourceData: {
+    title: string;
+    resource_url: string;
+    description: string;
+    resource_type: string;
+    category: string;
+    tags?: string;
+    posted_by: number;
+  }) {
+    try {
+      const res = await pool.query(
+        `INSERT INTO resources (title, resource_url, description, resource_type, category, tags, posted_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [
+          resourceData.title,
+          resourceData.resource_url,
+          resourceData.description,
+          resourceData.resource_type,
+          resourceData.category,
+          resourceData.tags,
+          resourceData.posted_by
+        ]
+      );
+      return res.rows[0];
+    } catch (error) {
+      console.error('Error creating resource:', error);
+      throw new Error('Failed to create resource');
+    }
+  }
+
+  // Forum operations (using forum_threads table)
+  async getForumThreads(limit?: number) {
+    try {
+      let query = `
+        SELECT ft.*, u.name as author_name, u.avatar_url as author_avatar
+        FROM forum_threads ft 
+        LEFT JOIN users u ON ft.created_by = u.id
+        ORDER BY ft.created_at DESC
+      `;
+      const params: any[] = [];
+
+      if (limit) {
+        query += ` LIMIT $1`;
+        params.push(limit);
+      }
+
+      const res = await pool.query(query, params);
+      return res.rows;
+    } catch (error) {
+      console.error('Error getting forum threads:', error);
+      return [];
+    }
+  }
+
+  async createForumThread(threadData: {
+    title: string;
+    content: string;
+    category: string;
+    tags?: string;
+    images?: any[];
+    created_by: number;
+  }) {
+    try {
+      // Serialize images to JSON if provided
+      const imagesJson = threadData.images ? JSON.stringify(threadData.images) : null;
+      
+      const res = await pool.query(
+        `INSERT INTO forum_threads (title, content, category, tags, images, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [
+          threadData.title,
+          threadData.content,
+          threadData.category,
+          threadData.tags,
+          imagesJson,
+          threadData.created_by
+        ]
+      );
+      return res.rows[0];
+    } catch (error) {
+      console.error('Error creating forum thread:', error);
+      throw new Error('Failed to create forum thread');
+    }
+  }
+
+  async getForumReplies(thread_id: number, limit?: number) {
+    try {
+      let query = `
+        SELECT fr.*, u.name as author_name, u.avatar_url as author_avatar
+        FROM forum_replies fr 
+        LEFT JOIN users u ON fr.created_by = u.id
+        WHERE fr.thread_id = $1
+        ORDER BY fr.created_at DESC
+      `;
+      const params: any[] = [thread_id];
+
+      if (limit) {
+        query += ` LIMIT $2`;
+        params.push(limit);
+      }
+
+      const res = await pool.query(query, params);
+      return res.rows;
+    } catch (error) {
+      console.error('Error getting forum replies:', error);
+      return [];
+    }
+  }
+
+  async createForumReply(replyData: {
+    thread_id: number;
+    content: string;
+    created_by: number;
+  }) {
+    try {
+      const res = await pool.query(
+        `INSERT INTO forum_replies (thread_id, content, created_by)
+         VALUES ($1, $2, $3) RETURNING *`,
+        [
+          replyData.thread_id,
+          replyData.content,
+          replyData.created_by
+        ]
+      );
+      return res.rows[0];
+    } catch (error) {
+      console.error('Error creating forum reply:', error);
+      throw new Error('Failed to create forum reply');
+    }
+  }
+
+  // Search operations
+  async searchContent(query: string, type?: string, limit: number = 20) {
+    try {
+      const searchTerm = `%${query}%`;
+      const results: any[] = [];
+
+      if (!type || type === 'internships') {
+        const res = await pool.query(
+          `SELECT 'internship' as type, id, role as title, description, created_at
+           FROM internships 
+           WHERE is_active = true AND (role ILIKE $1 OR description ILIKE $1 OR domain ILIKE $1)
+           ORDER BY created_at DESC
+           LIMIT $2`,
+          [searchTerm, limit]
+        );
+        results.push(...res.rows);
+      }
+
+      if (!type || type === 'events') {
+        const res = await pool.query(
+          `SELECT 'event' as type, id, title, description, created_at
+           FROM events 
+           WHERE is_active = true AND (title ILIKE $1 OR description ILIKE $1 OR event_type ILIKE $1)
+           ORDER BY created_at DESC
+           LIMIT $2`,
+          [searchTerm, limit]
+        );
+        results.push(...res.rows);
+      }
+
+      if (!type || type === 'resources') {
+        const res = await pool.query(
+          `SELECT 'resource' as type, id, title, description, created_at
+           FROM resources 
+           WHERE title ILIKE $1 OR description ILIKE $1 OR category ILIKE $1
+           ORDER BY created_at DESC
+           LIMIT $2`,
+          [searchTerm, limit]
+        );
+        results.push(...res.rows);
+      }
+
+      return results
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, limit);
+    } catch (error) {
+      console.error('Error searching content:', error);
+      return [];
+    }
+  }
+
+  // Phone Verification Operations
+  async updatePhoneNumber(userId: number, phoneNumber: string) {
+    try {
+      await pool.query(
+        'UPDATE users SET phone_number = $1, phone_verified = false, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [phoneNumber, userId]
+      );
+    } catch (error) {
+      console.error('Error updating phone number:', error);
+      throw new Error('Failed to update phone number');
+    }
+  }
+
+  async setOTPCooldown(userId: number) {
+    try {
+      await pool.query(
+        'UPDATE users SET otp_cooldown = CURRENT_TIMESTAMP WHERE id = $1',
+        [userId]
+      );
+    } catch (error) {
+      console.error('Error setting OTP cooldown:', error);
+      throw new Error('Failed to set OTP cooldown');
+    }
+  }
+
+  async setVerificationSid(userId: number, sid: string) {
+    try {
+      await pool.query(
+        'UPDATE users SET verification_sid = $1 WHERE id = $2',
+        [sid, userId]
+      );
+    } catch (error) {
+      console.error('Error setting verification SID:', error);
+      throw new Error('Failed to set verification SID');
+    }
+  }
+
+  async verifyPhone(userId: number) {
+    try {
+      await pool.query(
+        'UPDATE users SET phone_verified = true, verification_sid = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+        [userId]
+      );
+    } catch (error) {
+      console.error('Error verifying phone:', error);
+      throw new Error('Failed to verify phone');
+    }
+  }
+
+  async getPhoneStatus(userId: number): Promise<{
+    phoneNumber: string | null;
+    phoneVerified: boolean;
+    otpCooldown: Date | null;
+  } | null> {
+    try {
+      const res = await pool.query(
+        'SELECT phone_number, phone_verified, otp_cooldown FROM users WHERE id = $1',
+        [userId]
+      );
+      if (res.rows.length === 0) return null;
+      
+      return {
+        phoneNumber: res.rows[0].phone_number,
+        phoneVerified: res.rows[0].phone_verified,
+        otpCooldown: res.rows[0].otp_cooldown,
+      };
+    } catch (error) {
+      console.error('Error getting phone status:', error);
+      return null;
+    }
+  }
+
+  async getPhoneNumberByUserId(userId: number): Promise<string | null> {
+    try {
+      const res = await pool.query(
+        'SELECT phone_number FROM users WHERE id = $1',
+        [userId]
+      );
+      return res.rows[0]?.phone_number || null;
+    } catch (error) {
+      console.error('Error getting phone number:', error);
+      return null;
+    }
+  }
+
+  async isPhoneNumberTaken(phoneNumber: string, excludeUserId?: number): Promise<boolean> {
+    try {
+      let query = 'SELECT id FROM users WHERE phone_number = $1';
+      const params: any[] = [phoneNumber];
+      
+      if (excludeUserId) {
+        query += ' AND id != $2';
+        params.push(excludeUserId);
+      }
+      
+      const res = await pool.query(query, params);
+      return res.rows.length > 0;
+    } catch (error) {
+      console.error('Error checking phone number:', error);
+      return false;
+    }
+  }
+
+  // Student ID Verification Operations
+  async updateIdVerification(
+    userId: number,
+    imageUrl: string,
+    verified: boolean,
+    extractedData?: {
+      name?: string;
+      rollNumber?: string;
+      collegeName?: string;
+      idNumber?: string;
+    }
+  ) {
+    try {
+      // Get current attempts
+      const user = await pool.query(
+        'SELECT id_verification_attempts, last_verification_attempt FROM users WHERE id = $1',
+        [userId]
+      );
+
+      let attempts = user.rows[0]?.id_verification_attempts || 0;
+      const lastAttempt = user.rows[0]?.last_verification_attempt;
+
+      // Reset attempts if more than 24 hours have passed
+      if (lastAttempt) {
+        const hoursSinceLastAttempt = (Date.now() - new Date(lastAttempt).getTime()) / (1000 * 60 * 60);
+        if (hoursSinceLastAttempt >= 24) {
+          attempts = 0;
+        }
+      }
+
+      // Increment attempts
+      attempts += 1;
+
+      await pool.query(
+        `UPDATE users SET 
+          id_card_image_url = $1,
+          is_id_verified = $2,
+          id_verification_attempts = $3,
+          last_verification_attempt = CURRENT_TIMESTAMP,
+          student_name = COALESCE($4, student_name),
+          roll_number = COALESCE($5, roll_number),
+          college_name = COALESCE($6, college_name),
+          id_number = COALESCE($7, id_number),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $8`,
+        [
+          imageUrl,
+          verified,
+          attempts,
+          extractedData?.name || null,
+          extractedData?.rollNumber || null,
+          extractedData?.collegeName || null,
+          extractedData?.idNumber || null,
+          userId,
+        ]
+      );
+    } catch (error) {
+      console.error('Error updating ID verification:', error);
+      throw new Error('Failed to update ID verification');
+    }
+  }
+
+  async getIdVerificationStatus(userId: number): Promise<{
+    isVerified: boolean;
+    imageUrl: string | null;
+    attempts: number;
+    lastAttempt: Date | null;
+    studentName: string | null;
+    rollNumber: string | null;
+    collegeName: string | null;
+    idNumber: string | null;
+  } | null> {
+    try {
+      const res = await pool.query(
+        `SELECT 
+          is_id_verified,
+          id_card_image_url,
+          id_verification_attempts,
+          last_verification_attempt,
+          student_name,
+          roll_number,
+          college_name,
+          id_number
+        FROM users WHERE id = $1`,
+        [userId]
+      );
+
+      if (res.rows.length === 0) return null;
+
+      const row = res.rows[0];
+      return {
+        isVerified: row.is_id_verified || false,
+        imageUrl: row.id_card_image_url,
+        attempts: row.id_verification_attempts || 0,
+        lastAttempt: row.last_verification_attempt,
+        studentName: row.student_name,
+        rollNumber: row.roll_number,
+        collegeName: row.college_name,
+        idNumber: row.id_number,
+      };
+    } catch (error) {
+      console.error('Error getting ID verification status:', error);
+      return null;
+    }
+  }
+}
+
+export const storage = new PostgreSQLStorage();
