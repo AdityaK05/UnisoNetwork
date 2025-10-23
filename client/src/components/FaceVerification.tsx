@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Camera, CheckCircle, XCircle, Upload, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import * as faceapi from '@vladmandic/face-api';
 
 interface FaceVerificationResult {
   success: boolean;
@@ -19,12 +20,31 @@ export default function FaceVerification() {
   const [verificationResult, setVerificationResult] = useState<FaceVerificationResult | null>(null);
   const [isFaceVerified, setIsFaceVerified] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [idCardImageUrl, setIdCardImageUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Check verification status on mount
+  // Load face-api models on mount
   useEffect(() => {
+    loadModels();
     checkVerificationStatus();
   }, []);
+
+  const loadModels = async () => {
+    try {
+      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+      ]);
+      setModelsLoaded(true);
+      console.log('✅ Face-api models loaded successfully');
+    } catch (error) {
+      console.error('Error loading face-api models:', error);
+      toast.error('Failed to load face recognition models');
+    }
+  };
 
   const checkVerificationStatus = async () => {
     try {
@@ -40,6 +60,7 @@ export default function FaceVerification() {
       if (response.ok) {
         const data = await response.json();
         setIsFaceVerified(data.isFaceVerified);
+        setIdCardImageUrl(data.idCardImageUrl);
       }
     } catch (error) {
       console.error('Error checking verification status:', error);
@@ -81,6 +102,16 @@ export default function FaceVerification() {
       return;
     }
 
+    if (!modelsLoaded) {
+      toast.error('Face recognition models are still loading. Please wait...');
+      return;
+    }
+
+    if (!idCardImageUrl) {
+      toast.error('No ID card found. Please upload your ID card first.');
+      return;
+    }
+
     setVerifying(true);
     setVerificationResult(null);
 
@@ -91,8 +122,58 @@ export default function FaceVerification() {
         return;
       }
 
+      // Load images
+      const selfieImg = await faceapi.bufferToImage(selfieFile);
+      const idCardImg = await faceapi.fetchImage(idCardImageUrl);
+
+      // Detect faces
+      const selfieDetection = await faceapi
+        .detectSingleFace(selfieImg)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      const idCardDetection = await faceapi
+        .detectSingleFace(idCardImg)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!selfieDetection) {
+        toast.error('No face detected in selfie. Please try again with a clearer photo.');
+        setVerificationResult({
+          success: false,
+          matchScore: 0,
+          verificationStatus: 'No Face Detected',
+          message: 'No face was detected in your selfie. Please ensure your face is clearly visible.',
+        });
+        setVerifying(false);
+        return;
+      }
+
+      if (!idCardDetection) {
+        toast.error('Could not detect face in ID card image. Please re-upload your ID card.');
+        setVerificationResult({
+          success: false,
+          matchScore: 0,
+          verificationStatus: 'ID Card Error',
+          message: 'Face detection failed on ID card. Please re-upload a clear ID card photo.',
+        });
+        setVerifying(false);
+        return;
+      }
+
+      // Calculate distance between faces (lower = more similar)
+      const distance = faceapi.euclideanDistance(
+        selfieDetection.descriptor,
+        idCardDetection.descriptor
+      );
+
+      // Convert distance to similarity score (0-1, higher = more similar)
+      const matchScore = Math.max(0, 1 - distance);
+
+      // Send result to server
       const formData = new FormData();
       formData.append('selfieImage', selfieFile);
+      formData.append('matchScore', matchScore.toString());
 
       const response = await fetch('/api/face-verification', {
         method: 'POST',
@@ -118,7 +199,7 @@ export default function FaceVerification() {
         success: false,
         matchScore: 0,
         verificationStatus: 'Error',
-        message: 'Network error. Please check your connection and try again.',
+        message: 'An error occurred during verification. Please try again.',
       });
     } finally {
       setVerifying(false);

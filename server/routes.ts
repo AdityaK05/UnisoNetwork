@@ -787,13 +787,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================
-  //============================================
-  // FACE VERIFICATION ROUTES - TEMPORARILY DISABLED
-  // Face verification requires TensorFlow which needs Visual Studio build tools on Windows
-  // Uncomment when you have the required build tools installed
+  // FACE VERIFICATION ROUTES
   // ============================================
 
-  /*
   // Configure multer for face verification selfie uploads
   const faceVerificationUpload = multer({
     storage: multer.memoryStorage(),
@@ -819,11 +815,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     if (!userAttempts || userAttempts.resetAt < now) {
       // Reset or create new entry
-      faceVerificationAttempts.set(userId, { count: 1, resetAt: new Date(now.getTime() + 24 * 60 * 60 * 1000) });
+      faceVerificationAttempts.set(userId, { count: 1, resetAt: new Date(now.getTime() + 30 * 60 * 1000) });
       return true;
     }
 
-    if (userAttempts.count >= 3) {
+    if (userAttempts.count >= 5) {
       return false; // Exceeded limit
     }
 
@@ -847,7 +843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!checkFaceVerificationLimit(userId)) {
           return res.status(429).json({
             success: false,
-            message: 'Face verification attempt limit exceeded. Please try again after 24 hours.',
+            message: 'Face verification attempt limit exceeded. Please try again after 30 minutes.',
           });
         }
 
@@ -885,25 +881,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
 
-          // Load face-api models if not loaded
-          await loadFaceApiModels();
+          // Get match score from client (client-side face-api.js does the comparison)
+          const matchScore = parseFloat(req.body.matchScore || '0');
+          const success = matchScore >= 0.3; // 30% similarity threshold (lowered for easier verification)
 
-          // Perform face verification
-          console.log(`🔍 Starting face verification for user ${userId}...`);
-          const verificationResult = await verifyFaceMatch(id_card_image_url, selfieFile.buffer);
+          console.log(`🔍 Face verification for user ${userId}: ${matchScore.toFixed(2)} (${success ? 'PASSED' : 'FAILED'})`);
 
           // Update database if successful
-          if (verificationResult.success) {
+          if (success) {
             await client.query(
               'UPDATE users SET is_face_verified = true, face_verified_at = CURRENT_TIMESTAMP WHERE id = $1',
               [userId]
             );
             console.log(`✅ Face verification successful for user ${userId}`);
-          } else {
-            console.log(`❌ Face verification failed for user ${userId}: ${verificationResult.message}`);
           }
 
-          res.json(verificationResult);
+          res.json({
+            success,
+            matchScore,
+            verificationStatus: success ? 'Face Matched ✅' : 'Face Not Matched ❌',
+            message: success 
+              ? 'Face verification successful! Your identity has been confirmed.' 
+              : 'Face verification failed. Please ensure good lighting and try again.',
+          });
         } finally {
           client.release();
         }
@@ -930,7 +930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const client = await pool.connect();
       try {
         const result = await client.query(
-          'SELECT is_face_verified, face_verified_at FROM users WHERE id = $1',
+          'SELECT is_face_verified, face_verified_at, id_card_image_url FROM users WHERE id = $1',
           [userId]
         );
 
@@ -941,6 +941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           isFaceVerified: result.rows[0].is_face_verified || false,
           faceVerifiedAt: result.rows[0].face_verified_at || null,
+          idCardImageUrl: result.rows[0].id_card_image_url || null,
         });
       } finally {
         client.release();
@@ -950,7 +951,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Error checking face verification status' });
     }
   });
-  */
 
   // ============================================
   // RESUME PARSING ROUTES

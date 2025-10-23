@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/AuthContext';
 import { Link, useLocation } from 'wouter';
 import { toast } from 'react-hot-toast';
 import { isValidCollegeEmail, getCollegeEmailError } from '../utils/collegeEmailValidator';
+import * as faceapi from '@vladmandic/face-api';
 
 interface SignupFormData {
   name: string;
@@ -16,7 +17,7 @@ interface SignupFormData {
 }
 
 const SignupWithEmail: React.FC = () => {
-  const [step, setStep] = useState<1 | 2 | 3>(1); // Step 1: Form, Step 2: OTP, Step 3: ID Upload
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1); // Step 1: Form, Step 2: OTP, Step 3: ID Upload, Step 4: Face Verification
   const [formData, setFormData] = useState<SignupFormData>({
     name: '',
     email: '',
@@ -30,7 +31,13 @@ const SignupWithEmail: React.FC = () => {
   const [otp, setOtp] = useState('');
   const [idCard, setIdCard] = useState<File | null>(null);
   const [idPreview, setIdPreview] = useState<string | null>(null);
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [selfiePreview, setSelfiePreview] = useState<string | null>(null);
   const [verificationResult, setVerificationResult] = useState<any>(null);
+  const [faceVerificationResult, setFaceVerificationResult] = useState<any>(null);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [idCardImageUrl, setIdCardImageUrl] = useState<string>('');
+  const [userToken, setUserToken] = useState<string>('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
@@ -53,6 +60,43 @@ const SignupWithEmail: React.FC = () => {
       setIdPreview(URL.createObjectURL(file));
     }
   };
+
+  // Handle selfie upload
+  const handleSelfieChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        toast.error('Only JPEG, PNG, and WEBP images are allowed');
+        return;
+      }
+      setSelfieFile(file);
+      setSelfiePreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Load face-api models
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+        await Promise.all([
+          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        setModelsLoaded(true);
+        console.log('✅ Face detection models loaded');
+      } catch (error) {
+        console.error('Failed to load face detection models:', error);
+        toast.error('Failed to load face detection models');
+      }
+    };
+    loadModels();
+  }, []);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -194,8 +238,8 @@ const SignupWithEmail: React.FC = () => {
         throw new Error(signupData.message || 'Failed to create account');
       }
 
-      // Log the user in
-      login(signupData.user, signupData.token);
+      // Store token for later use
+      setUserToken(signupData.token);
 
       // Now upload and verify ID card
       const formDataUpload = new FormData();
@@ -217,19 +261,110 @@ const SignupWithEmail: React.FC = () => {
       const uploadData = await uploadResponse.json();
 
       if (!uploadResponse.ok) {
-        toast.error('Account created but ID verification failed. You can upload later.');
+        toast.error('Account created but ID verification failed.');
       } else {
         setVerificationResult(uploadData);
+        setIdCardImageUrl(uploadData.imageUrl); // Store ID card URL for face verification
         toast.success(uploadData.verificationStatus === 'Verified' 
-          ? '✅ Account created and ID verified!' 
-          : '⚠️ Account created. ID verification pending review.');
+          ? '✅ ID verified! Now verify your face' 
+          : '⚠️ ID uploaded. Now verify your face');
       }
 
-      // Redirect to home
-      setTimeout(() => setLocation('/'), 2000);
+      // Move to face verification step
+      setStep(4);
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
       toast.error(err.message || 'Failed to create account');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 4: Face verification
+  const handleFaceVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!selfieFile) {
+      setError('Please upload a selfie');
+      return;
+    }
+
+    if (!modelsLoaded) {
+      setError('Face detection models are still loading. Please wait...');
+      return;
+    }
+
+    if (!idCardImageUrl) {
+      setError('ID card image not found. Please try again.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Load and detect face in selfie
+      const selfieImg = await faceapi.bufferToImage(selfieFile);
+      const selfieDetection = await faceapi
+        .detectSingleFace(selfieImg)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!selfieDetection) {
+        throw new Error('No face detected in selfie. Please upload a clear photo of your face.');
+      }
+
+      // Load and detect face in ID card
+      const idCardImg = await faceapi.fetchImage(idCardImageUrl);
+      const idCardDetection = await faceapi
+        .detectSingleFace(idCardImg)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!idCardDetection) {
+        throw new Error('No face detected in ID card. Please ensure your ID card photo is clear.');
+      }
+
+      // Calculate face match score
+      const distance = faceapi.euclideanDistance(
+        selfieDetection.descriptor,
+        idCardDetection.descriptor
+      );
+      const matchScore = Math.max(0, 1 - distance);
+
+      // Upload selfie with match score to server
+      const faceFormData = new FormData();
+      faceFormData.append('selfieImage', selfieFile);
+      faceFormData.append('matchScore', matchScore.toString());
+
+      const response = await fetch('/api/face-verification', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: faceFormData
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setFaceVerificationResult(result);
+        toast.success('✅ Face verified successfully!');
+        
+        // Log the user in now
+        login({ 
+          name: formData.name, 
+          email: formData.email 
+        } as any, userToken);
+        
+        // Redirect to home
+        setTimeout(() => setLocation('/'), 2000);
+      } else {
+        throw new Error(result.message || 'Face verification failed. Match score too low.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Face verification failed');
+      toast.error(err.message || 'Face verification failed');
     } finally {
       setLoading(false);
     }
@@ -551,13 +686,101 @@ const SignupWithEmail: React.FC = () => {
                 disabled={loading || !idCard}
                 className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold rounded-full hover:opacity-90 transition disabled:opacity-50"
               >
-                {loading ? 'Creating Account...' : 'Create Account & Verify ID 🚀'}
+                {loading ? 'Creating Account...' : 'Continue to Face Verification →'}
               </button>
             </form>
 
             <p className="text-xs text-gray-500 mt-4">
               🎓 Your ID will be verified automatically using OCR
             </p>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <div className="mb-6">
+              <h2 className="text-3xl font-extrabold text-gray-800 mb-2">Verify Your Face 📸</h2>
+              <p className="text-gray-500">Upload a selfie to verify your identity</p>
+              {!modelsLoaded && (
+                <p className="text-xs text-yellow-600 mt-2">Loading face detection models...</p>
+              )}
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+                {error}
+              </div>
+            )}
+
+            {faceVerificationResult && (
+              <div className={`border px-4 py-3 rounded-lg mb-4 text-sm ${
+                faceVerificationResult.success
+                  ? 'bg-green-50 border-green-200 text-green-700'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}>
+                <p className="font-semibold">Match Score: {(faceVerificationResult.matchScore * 100).toFixed(0)}%</p>
+                <p>{faceVerificationResult.message}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleFaceVerification} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Selfie</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-blue-400 transition">
+                  {selfiePreview ? (
+                    <div className="space-y-2">
+                      <img src={selfiePreview} alt="Selfie Preview" className="max-h-64 mx-auto rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelfieFile(null);
+                          setSelfiePreview(null);
+                        }}
+                        className="text-sm text-red-600 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleSelfieChange}
+                        className="hidden"
+                        required
+                      />
+                      <div className="text-gray-500">
+                        <svg className="mx-auto h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <p className="text-sm font-semibold">Take a Selfie or Upload Photo</p>
+                        <p className="text-xs text-gray-400 mt-1">JPEG, PNG, WEBP (Max 5MB)</p>
+                        <p className="text-xs text-gray-400 mt-1">Make sure your face is clearly visible</p>
+                      </div>
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !selfieFile || !modelsLoaded}
+                className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold rounded-full hover:opacity-90 transition disabled:opacity-50"
+              >
+                {loading ? 'Verifying Face...' : 'Complete Signup ✅'}
+              </button>
+            </form>
+
+            <div className="mt-4 space-y-2">
+              <p className="text-xs text-gray-500">
+                📸 Your selfie will be compared with your ID card photo
+              </p>
+              <p className="text-xs text-gray-500">
+                🔒 We use AI face recognition for security
+              </p>
+            </div>
           </>
         )}
       </div>
