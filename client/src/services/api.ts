@@ -1,11 +1,13 @@
 import axios from 'axios';
+import conf from '../conf/conf';
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: '/api', // Uses Vite proxy
+  baseURL: `${conf.apiBaseUrl}/api`, // Uses environment-based API URL
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important for CORS with credentials
 });
 
 // Add auth token to requests

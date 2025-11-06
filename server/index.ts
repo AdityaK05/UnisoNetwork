@@ -17,10 +17,28 @@ app.get('/', (req, res) => {
   res.send('UNiSO API is running!');
 });
 
+// CORS configuration for development and production
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5000',
+  process.env.FRONTEND_URL, // Add your Vercel URL as environment variable
+].filter(Boolean); // Remove undefined values
 
-
-// Use CORS middleware - allow Vite dev server (localhost:5173) for frontend-backend integration
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list or matches Vercel preview deployments
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -89,8 +107,11 @@ app.use((req, res, next) => {
   // serveStatic(app); // Removed: no static frontend serving in API-only deployment
   }
 
-  const port = 5000;
-  server.listen(port, "localhost", () => {
-    log(`serving on http://localhost:${port}`);
+  // Use PORT from environment (Render provides this) or default to 5000
+  const port = process.env.PORT || 5000;
+  const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+  
+  server.listen(Number(port), host, () => {
+    log(`serving on http://${host}:${port}`);
   });
 })();
