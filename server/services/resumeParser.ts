@@ -1,6 +1,11 @@
-import * as pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import nlp from 'compromise';
+import fs from 'fs';
+// @ts-ignore - pdf-parse has module resolution issues
+import * as pdfParseModule from 'pdf-parse';
+
+// Handle CommonJS default export
+const pdfParse = (pdfParseModule as any).default || pdfParseModule;
 
 interface ParsedResume {
   name?: string;
@@ -14,29 +19,95 @@ interface ParsedResume {
 }
 
 /**
- * Extract text from PDF buffer
+ * Extract text from PDF buffer or file path
+ * Supports both memory buffer and disk-based storage
  */
-async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+async function extractTextFromPDF(filePathOrBuffer: string | Buffer): Promise<string> {
   try {
-    // @ts-ignore - pdf-parse has complex module exports
-    const data = await pdfParse.default(buffer);
-    return data.text;
-  } catch (error) {
-    console.error('Error extracting PDF text:', error);
-    throw new Error('Failed to parse PDF file');
+    if (!pdfParse) {
+      throw new Error('PDF parser module not available. Please install pdf-parse.');
+    }
+
+    // Convert to buffer if file path is provided
+    const dataBuffer = Buffer.isBuffer(filePathOrBuffer)
+      ? filePathOrBuffer
+      : fs.readFileSync(filePathOrBuffer);
+
+    // Validate buffer
+    if (!dataBuffer || dataBuffer.length === 0) {
+      throw new Error('Empty PDF buffer or file');
+    }
+
+    console.log('📄 Attempting to parse PDF, buffer size:', dataBuffer.length, 'bytes');
+
+    // Parse PDF
+    const pdfData = await pdfParse(dataBuffer);
+    
+    // Validate extracted text
+    if (!pdfData || !pdfData.text) {
+      throw new Error('PDF parsing returned no data');
+    }
+
+    const extractedText = pdfData.text.trim();
+    
+    if (extractedText.length === 0) {
+      throw new Error('Empty or non-text PDF file. This might be a scanned image-based PDF without a text layer.');
+    }
+
+    console.log('✅ PDF parsed successfully');
+    console.log('📊 Text length:', extractedText.length, 'characters');
+    console.log('📝 First 200 chars:', extractedText.substring(0, 200));
+    console.log('📄 Total pages:', pdfData.numpages);
+
+    return extractedText;
+  } catch (error: any) {
+    console.error('❌ Error extracting PDF text:', error);
+    console.error('Error message:', error.message);
+    
+    // Provide user-friendly error messages
+    if (error.message.includes('Invalid PDF')) {
+      throw new Error('Invalid PDF file format. Please ensure the file is a valid PDF.');
+    } else if (error.message.includes('Empty')) {
+      throw new Error('PDF appears to be empty or scanned image-based. Please use a text-based resume.');
+    } else {
+      throw new Error(`Failed to parse PDF file: ${error.message}`);
+    }
   }
 }
 
 /**
- * Extract text from DOCX buffer
+ * Extract text from DOCX buffer or file path
  */
-async function extractTextFromDOCX(buffer: Buffer): Promise<string> {
+async function extractTextFromDOCX(filePathOrBuffer: string | Buffer): Promise<string> {
   try {
-    const result = await mammoth.extractRawText({ buffer });
-    return result.value;
-  } catch (error) {
-    console.error('Error extracting DOCX text:', error);
-    throw new Error('Failed to parse DOCX file');
+    // Convert to buffer if file path is provided
+    const dataBuffer = Buffer.isBuffer(filePathOrBuffer)
+      ? filePathOrBuffer
+      : fs.readFileSync(filePathOrBuffer);
+
+    // Validate buffer
+    if (!dataBuffer || dataBuffer.length === 0) {
+      throw new Error('Empty DOCX buffer or file');
+    }
+
+    console.log('📄 Attempting to parse DOCX, buffer size:', dataBuffer.length, 'bytes');
+
+    const result = await mammoth.extractRawText({ buffer: dataBuffer });
+    const extractedText = result.value.trim();
+
+    if (extractedText.length === 0) {
+      throw new Error('Empty DOCX file or no text content found');
+    }
+
+    console.log('✅ DOCX parsed successfully');
+    console.log('📊 Text length:', extractedText.length, 'characters');
+    console.log('📝 First 200 chars:', extractedText.substring(0, 200));
+
+    return extractedText;
+  } catch (error: any) {
+    console.error('❌ Error extracting DOCX text:', error);
+    console.error('Error message:', error.message);
+    throw new Error(`Failed to parse DOCX file: ${error.message}`);
   }
 }
 

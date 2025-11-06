@@ -22,6 +22,7 @@ import Signup from "@/pages/signup";
 import Profile from "@/pages/profile";
 import CreateGroupPage from "@/pages/create-group";
 import MyGroupsPage from "@/pages/my-groups";
+import AdminJobPortal from "@/pages/admin-jobs";
 
 type ProtectedRouteProps = {
   component: React.FC;
@@ -55,6 +56,7 @@ function Router() {
       <Route path="/forums" component={() => <ProtectedRoute component={ForumsPage} />} />
       <Route path="/resources" component={() => <ProtectedRoute component={ResourcesPage} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
+      <Route path="/admin/jobs" component={() => <ProtectedRoute component={AdminJobPortal} />} />
       <Route component={NotFound} />
     </Switch>
   );

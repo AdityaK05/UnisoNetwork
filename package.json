@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "npx tsx watch server/index.ts",
     "start": "set NODE_ENV=production && npx tsx server/index.ts",
-    "build": "vite build"
+    "build": "vite build",
+    "vercel-build": "vite build"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",

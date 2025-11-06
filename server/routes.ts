@@ -12,6 +12,7 @@ import { CaptchaService } from './services/captcha';
 import { isValidCollegeEmail, getCollegeEmailError } from './utils/collegeEmailValidator';
 // import { verifyFaceMatch, loadFaceApiModels } from './services/faceVerification';
 import { parseResume } from './services/resumeParser';
+import { verifyAdminOrCoordinator } from './middleware/adminAuth';
 import multer from 'multer';
 import path from 'path';
 
@@ -102,9 +103,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user (used by frontend for auto-login)
   app.get('/api/users/me', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
-      const user = await storage.getUser(req.user.id);
-      if (!user) return res.status(404).json({ message: 'User not found' });
-      res.json({ id: user.id, name: user.name, email: user.email, avatar_url: user.avatar_url });
+      const userId = req.user.id;
+      
+      // Get user data directly from database to include role
+      const client = await pool.connect();
+      try {
+        const result = await client.query(
+          'SELECT id, name, email, avatar_url, role, created_at FROM users WHERE id = $1',
+          [userId]
+        );
+        
+        if (!result.rows[0]) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+        
+        const user = result.rows[0];
+        res.json({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatar_url: user.avatar_url,
+          role: user.role || 'student',
+          created_at: user.created_at,
+        });
+      } finally {
+        client.release();
+      }
     } catch (err) {
       res.status(500).json({ message: 'Error fetching current user', error: (err as Error).message });
     }
@@ -984,38 +1008,452 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const userId = req.user?.id;
         if (!userId) {
-          return res.status(401).json({ message: 'Unauthorized' });
+          return res.status(401).json({ 
+            success: false,
+            message: 'Unauthorized. Please log in to upload your resume.' 
+          });
         }
 
-        // Get uploaded resume
+        // Get uploaded resume file
         const resumeFile = (req as any).file;
         if (!resumeFile) {
-          return res.status(400).json({ success: false, message: 'Resume file is required' });
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Resume file is required. Please select a PDF or DOCX file.' 
+          });
+        }
+
+        // Validate file buffer
+        if (!resumeFile.buffer || resumeFile.buffer.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'Uploaded file is empty. Please try again.',
+          });
+        }
+
+        // Log file details for debugging
+        console.log('📄 Resume upload details:');
+        console.log('  - User ID:', userId);
+        console.log('  - File name:', resumeFile.originalname);
+        console.log('  - File size:', resumeFile.size, 'bytes');
+        console.log('  - MIME type:', resumeFile.mimetype);
+        console.log('  - Buffer length:', resumeFile.buffer.length);
+
+        // Warn about large files
+        if (resumeFile.size > 5 * 1024 * 1024) {
+          console.warn('⚠️  Large file detected (>5MB). Processing may take longer.');
         }
 
         // Determine file type
-        const fileType = resumeFile.mimetype === 'application/pdf' ? 'pdf' : 'docx';
+        const ext = path.extname(resumeFile.originalname).toLowerCase();
+        let fileType: 'pdf' | 'docx';
+        
+        if (ext === '.pdf' || resumeFile.mimetype === 'application/pdf') {
+          fileType = 'pdf';
+        } else if (ext === '.docx' || resumeFile.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+          fileType = 'docx';
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid file type. Only PDF and DOCX files are supported.',
+          });
+        }
         
         console.log(`📄 Processing ${fileType.toUpperCase()} resume for user ${userId}...`);
 
-        // Parse resume
-        const parsedData = await parseResume(resumeFile.buffer, fileType);
+        // Parse resume with error handling
+        let parsedData;
+        try {
+          parsedData = await parseResume(resumeFile.buffer, fileType);
+        } catch (parseError: any) {
+          console.error('❌ Resume parsing failed:', parseError.message);
+          
+          // Provide specific error messages
+          if (parseError.message.includes('scanned') || parseError.message.includes('image-based')) {
+            return res.status(400).json({
+              success: false,
+              message: 'This appears to be a scanned PDF without a text layer. Please upload a text-based resume or convert your scanned document using OCR.',
+            });
+          } else if (parseError.message.includes('Empty')) {
+            return res.status(400).json({
+              success: false,
+              message: 'The resume appears to be empty. Please ensure the file contains text content.',
+            });
+          } else if (parseError.message.includes('Invalid PDF')) {
+            return res.status(400).json({
+              success: false,
+              message: 'Invalid or corrupted PDF file. Please try a different file.',
+            });
+          } else {
+            return res.status(500).json({
+              success: false,
+              message: `Failed to parse resume: ${parseError.message}`,
+            });
+          }
+        }
+
+        // Validate parsed data
+        if (!parsedData) {
+          return res.status(500).json({
+            success: false,
+            message: 'Resume parsing returned no data. Please try a different file.',
+          });
+        }
+
+        console.log('✅ Resume parsed successfully for user', userId);
 
         // Return parsed data
         res.json({
           success: true,
-          message: 'Resume parsed successfully',
+          message: 'Resume parsed successfully! ✅',
           data: parsedData,
         });
       } catch (error: any) {
-        console.error('Error parsing resume:', error);
+        console.error('❌ Unexpected error parsing resume:', error);
         res.status(500).json({
           success: false,
-          message: error.message || 'Failed to parse resume',
+          message: error.message || 'Failed to parse resume. Please ensure it is a valid text-based PDF or DOCX file.',
         });
       }
     }
   );
+
+  // =============================================================================
+  // ADMIN & PLACEMENT COORDINATOR JOB PORTAL ROUTES
+  // =============================================================================
+
+  // CREATE Job/Internship (Admin/Coordinator Only)
+  app.post(
+    '/api/admin/jobs',
+    authMiddleware,
+    verifyAdminOrCoordinator,
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const userId = req.user?.id;
+        const {
+          title,
+          company_name,
+          description,
+          location,
+          job_type,
+          salary_range,
+          skills_required,
+          application_deadline,
+          application_link,
+        } = req.body;
+
+        // Validation
+        if (!title || !company_name || !job_type) {
+          return res.status(400).json({
+            success: false,
+            message: 'Title, company name, and job type are required',
+          });
+        }
+
+        if (!['Internship', 'Full-time', 'Part-time'].includes(job_type)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid job type. Must be Internship, Full-time, or Part-time',
+          });
+        }
+
+        const client = await pool.connect();
+        try {
+          const result = await client.query(
+            `INSERT INTO jobs (
+              title, company_name, description, location, job_type, 
+              salary_range, skills_required, application_deadline, 
+              application_link, posted_by
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *`,
+            [
+              title,
+              company_name,
+              description || null,
+              location || null,
+              job_type,
+              salary_range || null,
+              skills_required || [],
+              application_deadline || null,
+              application_link || null,
+              userId,
+            ]
+          );
+
+          res.status(201).json({
+            success: true,
+            message: 'Job posted successfully',
+            job: result.rows[0],
+          });
+        } finally {
+          client.release();
+        }
+      } catch (error: any) {
+        console.error('Error creating job:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Failed to create job posting',
+        });
+      }
+    }
+  );
+
+  // GET All Jobs Created by Admin/Coordinator
+  app.get(
+    '/api/admin/jobs',
+    authMiddleware,
+    verifyAdminOrCoordinator,
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const userId = req.user?.id;
+
+        const client = await pool.connect();
+        try {
+          const result = await client.query(
+            `SELECT j.*, u.name as posted_by_name, u.email as posted_by_email
+             FROM jobs j
+             LEFT JOIN users u ON j.posted_by = u.id
+             WHERE j.posted_by = $1
+             ORDER BY j.posted_at DESC`,
+            [userId]
+          );
+
+          res.json({
+            success: true,
+            jobs: result.rows,
+          });
+        } finally {
+          client.release();
+        }
+      } catch (error: any) {
+        console.error('Error fetching admin jobs:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Failed to fetch jobs',
+        });
+      }
+    }
+  );
+
+  // UPDATE Job (Admin/Coordinator Only)
+  app.put(
+    '/api/admin/jobs/:id',
+    authMiddleware,
+    verifyAdminOrCoordinator,
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const userId = req.user?.id;
+        const jobId = parseInt(req.params.id);
+        const {
+          title,
+          company_name,
+          description,
+          location,
+          job_type,
+          salary_range,
+          skills_required,
+          application_deadline,
+          application_link,
+          status,
+        } = req.body;
+
+        const client = await pool.connect();
+        try {
+          // Check if job exists and belongs to user
+          const checkResult = await client.query(
+            'SELECT * FROM jobs WHERE id = $1 AND posted_by = $2',
+            [jobId, userId]
+          );
+
+          if (checkResult.rows.length === 0) {
+            return res.status(404).json({
+              success: false,
+              message: 'Job not found or you do not have permission to edit it',
+            });
+          }
+
+          // Update job
+          const result = await client.query(
+            `UPDATE jobs SET
+              title = COALESCE($1, title),
+              company_name = COALESCE($2, company_name),
+              description = COALESCE($3, description),
+              location = COALESCE($4, location),
+              job_type = COALESCE($5, job_type),
+              salary_range = COALESCE($6, salary_range),
+              skills_required = COALESCE($7, skills_required),
+              application_deadline = COALESCE($8, application_deadline),
+              application_link = COALESCE($9, application_link),
+              status = COALESCE($10, status),
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id = $11 AND posted_by = $12
+            RETURNING *`,
+            [
+              title,
+              company_name,
+              description,
+              location,
+              job_type,
+              salary_range,
+              skills_required,
+              application_deadline,
+              application_link,
+              status,
+              jobId,
+              userId,
+            ]
+          );
+
+          res.json({
+            success: true,
+            message: 'Job updated successfully',
+            job: result.rows[0],
+          });
+        } finally {
+          client.release();
+        }
+      } catch (error: any) {
+        console.error('Error updating job:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Failed to update job',
+        });
+      }
+    }
+  );
+
+  // DELETE Job (Admin/Coordinator Only)
+  app.delete(
+    '/api/admin/jobs/:id',
+    authMiddleware,
+    verifyAdminOrCoordinator,
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const userId = req.user?.id;
+        const jobId = parseInt(req.params.id);
+
+        const client = await pool.connect();
+        try {
+          const result = await client.query(
+            'DELETE FROM jobs WHERE id = $1 AND posted_by = $2 RETURNING *',
+            [jobId, userId]
+          );
+
+          if (result.rows.length === 0) {
+            return res.status(404).json({
+              success: false,
+              message: 'Job not found or you do not have permission to delete it',
+            });
+          }
+
+          res.json({
+            success: true,
+            message: 'Job deleted successfully',
+          });
+        } finally {
+          client.release();
+        }
+      } catch (error: any) {
+        console.error('Error deleting job:', error);
+        res.status(500).json({
+          success: false,
+          message: 'Failed to delete job',
+        });
+      }
+    }
+  );
+
+  // GET All Active Jobs (Public - Students)
+  app.get('/api/jobs', async (req: Request, res: Response) => {
+    try {
+      const { job_type, location, search } = req.query;
+
+      const client = await pool.connect();
+      try {
+        let query = `
+          SELECT j.*, u.name as posted_by_name
+          FROM jobs j
+          LEFT JOIN users u ON j.posted_by = u.id
+          WHERE j.status = 'Active'
+        `;
+        const params: any[] = [];
+        let paramIndex = 1;
+
+        if (job_type) {
+          query += ` AND j.job_type = $${paramIndex}`;
+          params.push(job_type);
+          paramIndex++;
+        }
+
+        if (location) {
+          query += ` AND j.location ILIKE $${paramIndex}`;
+          params.push(`%${location}%`);
+          paramIndex++;
+        }
+
+        if (search) {
+          query += ` AND (j.title ILIKE $${paramIndex} OR j.company_name ILIKE $${paramIndex} OR j.description ILIKE $${paramIndex})`;
+          params.push(`%${search}%`);
+          paramIndex++;
+        }
+
+        query += ' ORDER BY j.posted_at DESC';
+
+        const result = await client.query(query, params);
+
+        res.json({
+          success: true,
+          jobs: result.rows,
+        });
+      } finally {
+        client.release();
+      }
+    } catch (error: any) {
+      console.error('Error fetching jobs:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch jobs',
+      });
+    }
+  });
+
+  // GET Single Job Details (Public)
+  app.get('/api/jobs/:id', async (req: Request, res: Response) => {
+    try {
+      const jobId = parseInt(req.params.id);
+
+      const client = await pool.connect();
+      try {
+        const result = await client.query(
+          `SELECT j.*, u.name as posted_by_name, u.email as posted_by_email
+           FROM jobs j
+           LEFT JOIN users u ON j.posted_by = u.id
+           WHERE j.id = $1`,
+          [jobId]
+        );
+
+        if (result.rows.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: 'Job not found',
+          });
+        }
+
+        res.json({
+          success: true,
+          job: result.rows[0],
+        });
+      } finally {
+        client.release();
+      }
+    } catch (error: any) {
+      console.error('Error fetching job details:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch job details',
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

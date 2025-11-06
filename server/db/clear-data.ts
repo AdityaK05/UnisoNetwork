@@ -54,6 +54,10 @@ async function clearAllData() {
     const internships = await client.query('DELETE FROM internships RETURNING id');
     console.log(`✅ Deleted ${internships.rowCount} internships`);
 
+    console.log('Deleting jobs...');
+    const jobs = await client.query('DELETE FROM jobs RETURNING id');
+    console.log(`✅ Deleted ${jobs.rowCount} jobs`);
+
     // Delete from parent tables
     console.log('Deleting companies...');
     const companies = await client.query('DELETE FROM companies RETURNING id');
@@ -71,6 +75,7 @@ async function clearAllData() {
     await client.query('ALTER SEQUENCE users_id_seq RESTART WITH 1');
     await client.query('ALTER SEQUENCE companies_id_seq RESTART WITH 1');
     await client.query('ALTER SEQUENCE internships_id_seq RESTART WITH 1');
+    await client.query('ALTER SEQUENCE jobs_id_seq RESTART WITH 1');
     await client.query('ALTER SEQUENCE forum_threads_id_seq RESTART WITH 1');
     await client.query('ALTER SEQUENCE forum_replies_id_seq RESTART WITH 1');
     await client.query('ALTER SEQUENCE groups_id_seq RESTART WITH 1');
@@ -87,6 +92,7 @@ async function clearAllData() {
       SELECT 'users' as table_name, COUNT(*) as count FROM users
       UNION ALL SELECT 'companies', COUNT(*) FROM companies
       UNION ALL SELECT 'internships', COUNT(*) FROM internships
+      UNION ALL SELECT 'jobs', COUNT(*) FROM jobs
       UNION ALL SELECT 'forum_threads', COUNT(*) FROM forum_threads
       UNION ALL SELECT 'forum_replies', COUNT(*) FROM forum_replies
       UNION ALL SELECT 'groups', COUNT(*) FROM groups

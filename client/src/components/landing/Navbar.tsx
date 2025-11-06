@@ -80,7 +80,32 @@ export default function Navbar() {
 
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string>('student');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user role
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!user) return;
+      
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/users/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        if (data.role) {
+          setUserRole(data.role);
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+      }
+    };
+    
+    fetchUserRole();
+  }, [user]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -149,9 +174,14 @@ export default function Navbar() {
                     />
                     <span className="hidden sm:inline ml-1 font-semibold">{user.name}</span>
                   </button>
-                  {dropdownOpen && (
+                    {dropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 z-50 border">
                       <Link href="/profile" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">My Profile</Link>
+                      {(userRole === 'admin' || userRole === 'coordinator') && (
+                        <Link href="/admin/jobs" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 font-semibold text-primary">
+                          📋 Admin Portal
+                        </Link>
+                      )}
                       <button
                         className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50"
                         onClick={logout}
@@ -233,6 +263,11 @@ export default function Navbar() {
                     {dropdownOpen && (
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 z-50 border">
                         <Link href="/profile" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">My Profile</Link>
+                        {(userRole === 'admin' || userRole === 'coordinator') && (
+                          <Link href="/admin/jobs" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 font-semibold text-primary">
+                            📋 Admin Portal
+                          </Link>
+                        )}
                         <button
                           className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50"
                           onClick={logout}

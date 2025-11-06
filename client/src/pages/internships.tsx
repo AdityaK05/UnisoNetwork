@@ -60,9 +60,42 @@ export default function InternshipsPage() {
   useEffect(() => {
     const fetchInternships = async () => {
       try {
-        const res = await fetch('/api/internships');
-        const data = await res.json();
-        setInternships(data);
+        // Fetch both old internships and new admin jobs
+        const [internshipsRes, jobsRes] = await Promise.all([
+          fetch('/api/internships'),
+          fetch('/api/jobs')
+        ]);
+        
+        const internshipsData = await internshipsRes.json();
+        
+        let allInternships = Array.isArray(internshipsData) ? internshipsData : [];
+        
+        // Add admin jobs if available
+        if (jobsRes.ok) {
+          const jobsData = await jobsRes.json();
+          if (jobsData.success && jobsData.jobs) {
+            // Transform admin jobs to match internship format
+            const transformedJobs = jobsData.jobs.map((job: any) => ({
+              $id: `job-${job.id}`,
+              role: job.title,
+              company: job.company_name,
+              location: job.location || 'Not specified',
+              type: job.job_type,
+              domain: 'Tech', // Default domain
+              description: job.description || '',
+              applyLink: job.application_link || '#',
+              postedDate: new Date(job.posted_at).toLocaleDateString(),
+              logo: '💼',
+              companyColor: 'bg-gradient-card-3',
+              salaryRange: job.salary_range,
+              skills: job.skills_required || [],
+              deadline: job.application_deadline,
+            }));
+            allInternships = [...transformedJobs, ...allInternships];
+          }
+        }
+        
+        setInternships(allInternships);
       } catch (err) {
         console.error('Failed to fetch internships:', err);
       } finally {
