@@ -58,7 +58,9 @@ app.use(cors({
 }));
 
 // Add explicit OPTIONS handler for all routes
-app.options('*', cors());
+// Use '/*' instead of '*' because the path-to-regexp parser throws on a lone '*'
+// See: path-to-regexp expects a proper pattern; '/*' matches any path and is safe here.
+app.options('/*', cors());
 
 app.use((req, res, next) => {
   const start = Date.now();
