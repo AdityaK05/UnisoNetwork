@@ -271,36 +271,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store OTP
       signupOtpStore.set(email, { code, expiresAt, userData: { name, email } });
 
-      // Send email
-      const nodemailer = await import('nodemailer');
-      const transporter = nodemailer.default.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
+      // Send email (with dev mode fallback)
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        try {
+          const nodemailer = await import('nodemailer');
+          const transporter = nodemailer.default.createTransport({
+            service: 'gmail',
+            auth: {
+              user: process.env.EMAIL_USER,
+              pass: process.env.EMAIL_PASS,
+            },
+          });
 
-      const mailOptions = {
-        from: `"UnisoNetwork" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: 'Verify Your Email - UnisoNetwork',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #4F46E5;">Welcome to UnisoNetwork! 🚀</h2>
-            <p>Hi ${name || 'there'},</p>
-            <p>Your verification code is:</p>
-            <div style="background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
-              ${code}
-            </div>
-            <p>This code will expire in 10 minutes.</p>
-            <p style="color: #6b7280; font-size: 14px;">If you didn't request this code, please ignore this email.</p>
-          </div>
-        `,
-      };
+          const mailOptions = {
+            from: `"UnisoNetwork" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: 'Verify Your Email - UnisoNetwork',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #4F46E5;">Welcome to UnisoNetwork! 🚀</h2>
+                <p>Hi ${name || 'there'},</p>
+                <p>Your verification code is:</p>
+                <div style="background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
+                  ${code}
+                </div>
+                <p>This code will expire in 10 minutes.</p>
+                <p style="color: #6b7280; font-size: 14px;">If you didn't request this code, please ignore this email.</p>
+              </div>
+            `,
+          };
 
-      await transporter.sendMail(mailOptions);
-      console.log(`✅ Signup verification email sent to ${email}`);
+          await transporter.sendMail(mailOptions);
+          console.log(`✅ Signup verification email sent to ${email}`);
+        } catch (emailError) {
+          console.error('⚠️ Email sending failed, using console fallback:', emailError);
+          console.log(`📧 DEV MODE - OTP for ${email}: ${code}`);
+        }
+      } else {
+        // Dev mode - no email credentials configured
+        console.log('📧 DEV MODE - Email credentials not configured');
+        console.log(`📧 OTP for ${email}: ${code}`);
+        console.log('📧 Expires at:', expiresAt.toLocaleString());
+      }
 
       res.json({
         success: true,
