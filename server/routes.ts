@@ -281,6 +281,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               user: process.env.EMAIL_USER,
               pass: process.env.EMAIL_PASS,
             },
+            connectionTimeout: 5000, // 5 second timeout
+            greetingTimeout: 5000,
           });
 
           const mailOptions = {
@@ -301,7 +303,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `,
           };
 
-          await transporter.sendMail(mailOptions);
+          // Send with timeout using Promise.race
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Email timeout')), 8000)
+          );
+          
+          await Promise.race([
+            transporter.sendMail(mailOptions),
+            timeoutPromise
+          ]);
           console.log(`✅ Signup verification email sent to ${email}`);
         } catch (emailError) {
           console.error('⚠️ Email sending failed, using console fallback:', emailError);
