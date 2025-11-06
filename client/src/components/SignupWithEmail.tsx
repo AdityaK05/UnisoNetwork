@@ -144,7 +144,8 @@ const SignupWithEmail: React.FC = () => {
 
     try {
       // Send OTP to email
-      const response = await fetch('/api/email/send-otp-signup', {
+      const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/email/send-otp-signup`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
@@ -378,7 +379,8 @@ const SignupWithEmail: React.FC = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/email/send-otp-signup', {
+      const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/email/send-otp-signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
