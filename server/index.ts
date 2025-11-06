@@ -1,11 +1,21 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { registerRoutes } from "./routes";
-import { setupVite, log } from "./vite";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import pool from "./db/index";
+
+// Simple log function for production
+export function log(message: string, source = "express") {
+  const formattedTime = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
 
 
 const app = express();
@@ -101,10 +111,13 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  if (app.get("env") === "development") {
+  // Only load Vite in development
+  if (process.env.NODE_ENV === "development") {
+    const { setupVite } = await import("./vite.js");
     await setupVite(app, server);
   } else {
-  // serveStatic(app); // Removed: no static frontend serving in API-only deployment
+    // Production: API-only mode, no frontend serving
+    log("Running in production mode - API only");
   }
 
   // Use PORT from environment (Render provides this) or default to 5000
