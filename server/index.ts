@@ -32,6 +32,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:5000',
+  'https://uniso.vercel.app',
   process.env.FRONTEND_URL, // Add your Vercel URL as environment variable
 ].filter(Boolean); // Remove undefined values
 
@@ -41,18 +42,23 @@ app.use(cors({
     if (!origin) return callback(null, true);
     
     // Check if origin is in allowed list or matches Vercel preview deployments
-    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    if (allowedOrigins.includes(origin) || (origin && origin.endsWith('.vercel.app'))) {
       callback(null, true);
     } else {
+      log(`CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Length', 'X-JSON'],
   preflightContinue: false,
   optionsSuccessStatus: 204
 }));
+
+// Add explicit OPTIONS handler for all routes
+app.options('*', cors());
 
 app.use((req, res, next) => {
   const start = Date.now();
