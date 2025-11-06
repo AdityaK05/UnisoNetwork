@@ -7,9 +7,10 @@
 - **Status Endpoint**: https://uniso-backend.onrender.com/
 - **API Base**: https://uniso-backend.onrender.com/api
 
-### **Frontend** (To be deployed)
+### **Frontend**
 - **Platform**: Vercel
-- **URL**: `https://your-app.vercel.app` (Add after deployment)
+- **URL**: https://uniso.vercel.app
+- **Status**: ✅ Live
 
 ### **Database**
 - **Platform**: Render PostgreSQL
@@ -37,9 +38,9 @@ EMAIL_USER=adityagr8.05@gmail.com
 EMAIL_PASS=lehkvhwpalovyrhb
 ```
 
-**TO ADD AFTER FRONTEND DEPLOYMENT:**
+**FRONTEND CORS (ADDED):**
 ```
-FRONTEND_URL=https://your-vercel-url.vercel.app
+FRONTEND_URL=https://uniso.vercel.app
 ```
 
 ### **Frontend (Vercel)**
@@ -57,10 +58,10 @@ VITE_API_URL=https://uniso-backend.onrender.com
 - [x] Backend deployed on Render
 - [x] Backend environment variables configured
 - [x] Backend URL: https://uniso-backend.onrender.com
-- [ ] Frontend deployed on Vercel
-- [ ] Frontend URL obtained
-- [ ] FRONTEND_URL added to backend
-- [ ] End-to-end testing completed
+- [x] Frontend deployed on Vercel
+- [x] Frontend URL: https://uniso.vercel.app
+- [x] FRONTEND_URL added to backend
+- [ ] End-to-end testing in progress
 
 ---
 
@@ -124,4 +125,19 @@ curl https://uniso-backend.onrender.com/api/internships
 
 ---
 
-**Your backend is live! Deploy the frontend next!** 🎊
+**🎉 Your full-stack application is now LIVE!** 🎊
+
+## 🌐 Access Your Application:
+- **Frontend**: https://uniso.vercel.app
+- **Backend API**: https://uniso-backend.onrender.com
+- **Database**: PostgreSQL on Render (9 tables initialized)
+
+## 📝 Post-Deployment Notes:
+- Backend CORS configured for frontend domain
+- All environment variables set correctly
+- First backend request may take ~30s (cold start on free tier)
+- Frontend automatically reconnects if backend wakes up
+
+---
+
+**🎊 DEPLOYMENT COMPLETE! Start using your application!** 🚀
