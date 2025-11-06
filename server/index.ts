@@ -111,10 +111,14 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // Only load Vite in development
-  if (process.env.NODE_ENV === "development") {
-    const { setupVite } = await import("./vite.js");
-    await setupVite(app, server);
+  // Only load Vite in development - skip entirely in production
+  if (process.env.NODE_ENV === "development" && process.env.SKIP_VITE !== "true") {
+    try {
+      const { setupVite } = await import("./vite.js");
+      await setupVite(app, server);
+    } catch (err) {
+      log("Vite setup skipped - running in API-only mode");
+    }
   } else {
     // Production: API-only mode, no frontend serving
     log("Running in production mode - API only");
