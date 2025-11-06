@@ -126,7 +126,8 @@ app.use((req, res, next) => {
 
   // Use PORT from environment (Render provides this) or default to 5000
   const port = process.env.PORT || 5000;
-  const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+  // Always bind to 0.0.0.0 in production (when PORT is set by platform)
+  const host = process.env.PORT ? '0.0.0.0' : 'localhost';
   
   server.listen(Number(port), host, () => {
     log(`serving on http://${host}:${port}`);
