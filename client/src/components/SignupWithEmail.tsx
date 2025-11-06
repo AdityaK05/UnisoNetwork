@@ -4,6 +4,7 @@ import { Link, useLocation } from 'wouter';
 import { toast } from 'react-hot-toast';
 import { isValidCollegeEmail, getCollegeEmailError } from '../utils/collegeEmailValidator';
 import * as faceapi from '@vladmandic/face-api';
+import { apiUrl } from '../lib/api';
 
 interface SignupFormData {
   name: string;
@@ -144,8 +145,7 @@ const SignupWithEmail: React.FC = () => {
 
     try {
       // Send OTP to email
-      const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-      const response = await fetch(`${API_URL}/api/email/send-otp-signup`, {
+      const response = await fetch(apiUrl('/api/email/send-otp-signup'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
@@ -378,9 +378,8 @@ const SignupWithEmail: React.FC = () => {
     setLoading(true);
     setError('');
 
-    try {
-      const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-      const response = await fetch(`${API_URL}/api/email/send-otp-signup`, {
+    try{
+      const response = await fetch(apiUrl('/api/email/send-otp-signup'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
