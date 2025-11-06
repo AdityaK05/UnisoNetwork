@@ -57,6 +57,24 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 
+// Additional CORS headers middleware as fallback
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+  }
+  
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  
+  next();
+});
+
 // The global cors() middleware above already handles OPTIONS preflight requests
 // No need for explicit app.options() which causes path-to-regexp errors
 
