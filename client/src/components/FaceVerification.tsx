@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { apiUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -51,7 +52,7 @@ export default function FaceVerification() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('/api/face-verification/status', {
+  const response = await fetch(apiUrl('/api/face-verification/status'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -175,7 +176,7 @@ export default function FaceVerification() {
       formData.append('selfieImage', selfieFile);
       formData.append('matchScore', matchScore.toString());
 
-      const response = await fetch('/api/face-verification', {
+  const response = await fetch(apiUrl('/api/face-verification'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

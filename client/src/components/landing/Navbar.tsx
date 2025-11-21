@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from '../../hooks/AuthContext';
 import { useRef } from 'react';
 import { Link, useLocation } from "wouter";
+import { apiUrl } from '@/lib/api';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -90,7 +91,7 @@ export default function Navbar() {
       
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/users/me', {
+  const response = await fetch(apiUrl('/api/users/me'), {
           headers: {
             'Authorization': `Bearer ${token}`,
           },

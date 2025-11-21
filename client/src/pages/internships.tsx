@@ -28,6 +28,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
+import { apiUrl } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 
 const DOMAINS = ['All', 'Tech', 'Design', 'Marketing', 'Business', 'Finance'];
@@ -62,8 +63,8 @@ export default function InternshipsPage() {
       try {
         // Fetch both old internships and new admin jobs
         const [internshipsRes, jobsRes] = await Promise.all([
-          fetch('/api/internships'),
-          fetch('/api/jobs')
+          fetch(apiUrl('/api/internships')),
+          fetch(apiUrl('/api/jobs'))
         ]);
         
         const internshipsData = await internshipsRes.json();
@@ -146,7 +147,7 @@ export default function InternshipsPage() {
       const formData = new FormData();
       formData.append('resume', resumeFile);
 
-      const response = await fetch('/api/resume/upload', {
+  const response = await fetch(apiUrl('/api/resume/upload'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

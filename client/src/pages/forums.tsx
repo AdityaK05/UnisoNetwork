@@ -16,6 +16,7 @@ import {
   X
 } from "lucide-react";
 import MainLayout from "@/components/layout/MainLayout";
+import { apiUrl } from '@/lib/api';
 
 type Thread = {
   id: number;
@@ -83,7 +84,7 @@ export default function ForumsPage(): JSX.Element {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/forums');
+  const res = await fetch(apiUrl('/api/forums'));
       if (!res.ok) throw new Error('Failed to fetch threads');
       const data = await res.json();
       setThreads(Array.isArray(data) ? data : []);
@@ -219,7 +220,7 @@ export default function ForumsPage(): JSX.Element {
     setShowNewThread(false);
     
     try {
-      const res = await fetch('/api/forums', {
+  const res = await fetch(apiUrl('/api/forums'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -279,7 +280,7 @@ export default function ForumsPage(): JSX.Element {
         return;
       }
 
-      const res = await fetch(`/api/forums/${threadId}/posts`, {
+  const res = await fetch(apiUrl(`/api/forums/${threadId}/posts`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

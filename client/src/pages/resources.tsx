@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { apiUrl } from '@/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,7 +57,7 @@ export default function ResourcesPage() {
   const fetchResources = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/resources');
+  const response = await fetch(apiUrl('/api/resources'));
       const data = await response.json();
       const formattedResources = data.map((doc: any) => ({
         id: doc.id || doc.$id,
@@ -164,7 +165,7 @@ export default function ResourcesPage() {
       formData.append('course', uploadForm.course);
       formData.append('tags', uploadForm.tags);
       formData.append('file', uploadForm.file);
-      const res = await fetch('/api/resources', {
+  const res = await fetch(apiUrl('/api/resources'), {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`

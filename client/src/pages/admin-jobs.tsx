@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '@/lib/api';
 import { useAuth } from '../hooks/AuthContext';
 import { useLocation } from 'wouter';
 import { toast } from 'react-hot-toast';
@@ -47,7 +48,7 @@ const AdminJobPortal: React.FC = () => {
   const fetchJobs = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/admin/jobs', {
+  const response = await fetch(apiUrl('/api/admin/jobs'), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -71,10 +72,10 @@ const AdminJobPortal: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const url = editingJob ? `/api/admin/jobs/${editingJob.id}` : '/api/admin/jobs';
+  const url = editingJob ? apiUrl(`/api/admin/jobs/${editingJob.id}`) : apiUrl('/api/admin/jobs');
       const method = editingJob ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+  const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +126,7 @@ const AdminJobPortal: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/admin/jobs/${jobId}`, {
+  const response = await fetch(apiUrl(`/api/admin/jobs/${jobId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -150,7 +151,7 @@ const AdminJobPortal: React.FC = () => {
       const token = localStorage.getItem('token');
       const newStatus = job.status === 'Active' ? 'Closed' : 'Active';
 
-      const response = await fetch(`/api/admin/jobs/${job.id}`, {
+  const response = await fetch(apiUrl(`/api/admin/jobs/${job.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

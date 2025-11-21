@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { apiUrl } from '@/lib/api';
 import { Link } from 'wouter';
 import { Dialog, DialogTrigger, DialogContent } from '@/components/ui/dialog';
 import { useAuth } from '../hooks/AuthContext';
@@ -53,7 +54,7 @@ export default function GroupsPage() {
   const fetchGroups = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/groups');
+  const response = await fetch(apiUrl('/api/groups'));
       const data = await response.json();
       const formattedGroups = data.map((group: any) => ({
         id: group.id || group.$id,
@@ -75,7 +76,7 @@ export default function GroupsPage() {
   const fetchMyGroups = async () => {
     if (!user) return;
     try {
-      const res = await fetch('/api/groups/my', {
+  const res = await fetch(apiUrl('/api/groups/my'), {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       const data = await res.json();
@@ -86,7 +87,7 @@ export default function GroupsPage() {
   const fetchFavorites = async () => {
     if (!user) return;
     try {
-      const res = await fetch('/api/groups/favorites', {
+  const res = await fetch(apiUrl('/api/groups/favorites'), {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       const data = await res.json();
@@ -112,7 +113,7 @@ export default function GroupsPage() {
     const isFav = favorites.includes(id);
     setFavorites(prev => isFav ? prev.filter(favId => favId !== id) : [...prev, id]);
     try {
-      await fetch(`/api/groups/${id}/favorite`, {
+  await fetch(apiUrl(`/api/groups/${id}/favorite`), {
         method: isFav ? 'DELETE' : 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
@@ -124,7 +125,7 @@ export default function GroupsPage() {
   const handleJoinGroup = async (groupId: number) => {
     if (!user) return toast.error('Login to join groups');
     try {
-      await fetch(`/api/groups/${groupId}/join`, {
+  await fetch(apiUrl(`/api/groups/${groupId}/join`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
@@ -172,7 +173,7 @@ export default function GroupsPage() {
               e.preventDefault();
               setCreating(true);
               try {
-                const res = await fetch('/api/groups', {
+                const res = await fetch(apiUrl('/api/groups'), {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',

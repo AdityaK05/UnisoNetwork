@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, MapPin, Users, CalendarDays, Sparkles, Search } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
+import { apiUrl } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 
 // Available categories for filtering
@@ -37,7 +38,7 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/events');
+  const response = await fetch(apiUrl('/api/events'));
       const data = await response.json();
       const formattedEvents = data.map((doc: any) => ({
         id: doc.id || doc.$id,
@@ -103,7 +104,7 @@ export default function EventsPage() {
   // RSVP to an event
   const handleRSVP = async (eventId: string) => {
     try {
-      const response = await fetch(`/api/events/${eventId}/rsvp`, {
+  const response = await fetch(apiUrl(`/api/events/${eventId}/rsvp`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

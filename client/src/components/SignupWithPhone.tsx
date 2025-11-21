@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from '@/lib/api';
 import { useAuth } from '../hooks/AuthContext';
 import { Link, useLocation } from 'wouter';
 import { toast } from 'react-hot-toast';
@@ -115,7 +116,7 @@ const SignupWithPhone: React.FC = () => {
 
     try {
       // Create account with verified phone
-      const response = await fetch('/api/users/signup-with-phone', {
+  const response = await fetch(apiUrl('/api/users/signup-with-phone'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
