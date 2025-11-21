@@ -300,6 +300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
           ],
           from: { email: fromEmail, name: 'UnisoNetwork' },
+          reply_to: { email: process.env.EMAIL_REPLY_TO || process.env.EMAIL_FROM || fromEmail },
           content: [{ type: 'text/html', value: htmlBody }],
         };
 
@@ -347,6 +348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           to: email,
           subject: 'Verify Your Email - UnisoNetwork',
           html: htmlBody,
+          replyTo: process.env.EMAIL_REPLY_TO || process.env.EMAIL_FROM || process.env.EMAIL_USER,
         };
 
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Email timeout')), 8000));
