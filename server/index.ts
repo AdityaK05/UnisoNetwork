@@ -19,8 +19,12 @@ export function log(message: string, source = "express") {
 
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// IMPORTANT: apply CORS before body parsers and routes to ensure preflight
+// requests are handled and receive the proper Access-Control-Allow-* headers.
+// This fixes environments (like some cloud hosts) where OPTIONS may be routed
+// through middleware that doesn't include CORS headers.
+
 
 // Root route for friendly message
 app.get('/', (req, res) => {
@@ -40,7 +44,7 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
+
     // Check if origin is in allowed list or matches Vercel preview deployments
     if (allowedOrigins.includes(origin) || (origin && origin.endsWith('.vercel.app'))) {
       callback(null, true);
@@ -59,21 +63,25 @@ app.use(cors({
 
 // Additional CORS headers middleware as fallback
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
+  const origin = req.headers.origin as string | undefined;
   if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
   }
-  
+
   // Handle preflight
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
   }
-  
+
   next();
 });
+
+// Body parsers (after CORS)
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // The global cors() middleware above already handles OPTIONS preflight requests
 // No need for explicit app.options() which causes path-to-regexp errors
