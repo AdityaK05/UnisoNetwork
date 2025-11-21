@@ -268,8 +268,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-      // Store OTP
-      signupOtpStore.set(email, { code, expiresAt, userData: { name, email } });
+  // Normalize email (avoid case/whitespace mismatches) and store OTP
+  const normalizedEmail = String(email).trim().toLowerCase();
+  signupOtpStore.set(normalizedEmail, { code, expiresAt, userData: { name, email: normalizedEmail } });
+  console.log(`🗝️ Stored signup OTP for ${normalizedEmail} (expires at ${expiresAt.toISOString()})`);
 
       // Send email: prefer SendGrid HTTP API (works from cloud hosts),
       // fall back to SMTP (nodemailer) if configured, otherwise log OTP.
@@ -386,6 +388,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (err) {
       console.error('❌ Error sending signup OTP:', err);
+      try {
+        console.error('Request body for send-otp-signup:', JSON.stringify(req.body));
+        console.error('Request headers for send-otp-signup:', JSON.stringify(req.headers));
+        console.error('Remote IP for send-otp-signup:', req.ip || req.socket?.remoteAddress);
+      } catch (logErr) {
+        console.error('Failed to stringify request info for signup OTP logging', logErr);
+      }
+      if (err instanceof Error && err.stack) console.error('Stack trace:', err.stack);
       res.status(500).json({ 
         success: false,
         message: 'Error sending verification code', 
@@ -415,23 +425,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Verify OTP
-      const storedOtp = signupOtpStore.get(email);
+      // Verify OTP (normalize email to match storage)
+      const normalizedEmail = String(email).trim().toLowerCase();
+      const storedOtp = signupOtpStore.get(normalizedEmail);
       if (!storedOtp) {
+        console.warn(`No OTP found for signup attempt for ${normalizedEmail}`);
         return res.status(401).json({ message: 'No verification code found. Please request a new one.' });
       }
 
       if (storedOtp.expiresAt < new Date()) {
         signupOtpStore.delete(email);
+        signupOtpStore.delete(normalizedEmail);
         return res.status(401).json({ message: 'Verification code expired. Please request a new one.' });
       }
 
       if (storedOtp.code !== otp) {
+        console.warn(`Invalid OTP for ${normalizedEmail}: provided=${otp} expected=${storedOtp.code}`);
         return res.status(401).json({ message: 'Invalid verification code' });
       }
 
       // Delete used OTP
-      signupOtpStore.delete(email);
+      signupOtpStore.delete(normalizedEmail);
 
       // Check if email already exists (double-check)
       const existingUser = await storage.getUserByEmail(email);
@@ -483,11 +497,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
     } catch (err) {
-      console.error('Signup with email failed:', err);
-      res.status(500).json({ 
-        message: 'Signup failed', 
-        error: (err as Error).message 
-      });
+        console.error('Signup with email failed:', err);
+        try {
+          console.error('Request body for signup-with-email:', JSON.stringify(req.body));
+          console.error('Request headers for signup-with-email:', JSON.stringify(req.headers));
+          console.error('Remote IP for signup-with-email:', req.ip || req.socket?.remoteAddress);
+        } catch (logErr) {
+          console.error('Failed to stringify request info for signup logging', logErr);
+        }
+        if (err instanceof Error && err.stack) console.error('Stack trace:', err.stack);
+        res.status(500).json({ 
+          message: 'Signup failed', 
+          error: (err as Error).message 
+        });
     }
   });
 
