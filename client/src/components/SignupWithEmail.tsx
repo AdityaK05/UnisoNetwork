@@ -213,7 +213,7 @@ const SignupWithEmail: React.FC = () => {
 
     try {
       // First create the account
-      const signupResponse = await fetch('/api/users/signup-with-email', {
+      const signupResponse = await fetch(apiUrl('/api/users/signup-with-email'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -251,7 +251,7 @@ const SignupWithEmail: React.FC = () => {
       formDataUpload.append('course', formData.course);
       formDataUpload.append('yearOfAdmission', formData.yearOfAdmission);
 
-      const uploadResponse = await fetch('/api/id-verification/upload-id', {
+      const uploadResponse = await fetch(apiUrl('/api/id-verification/upload-id'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${signupData.token}`
@@ -338,7 +338,7 @@ const SignupWithEmail: React.FC = () => {
       faceFormData.append('selfieImage', selfieFile);
       faceFormData.append('matchScore', matchScore.toString());
 
-      const response = await fetch('/api/face-verification', {
+      const response = await fetch(apiUrl('/api/face-verification'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${userToken}`
