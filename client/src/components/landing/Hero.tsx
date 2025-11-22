@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import api from "../../services/api";
 
 
 export default function Hero() {
@@ -15,11 +16,10 @@ export default function Hero() {
     }
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
-      fetch(`/api/users/${payload.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => setUser(data));
+      api
+        .get(`/users/${payload.id}`)
+        .then((res) => setUser(res.data))
+        .catch(() => setUser(null));
     } catch {
       setUser(null);
     }

@@ -1,9 +1,13 @@
 import axios from 'axios';
-import conf from '../conf/conf';
+import apiUrl from '../lib/api';
+
+// Create axios instance with runtime-resolved base URL so it never points at the
+// frontend origin (the runtime guard in `apiUrl` protects against that).
+const base = apiUrl('/api');
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: `${conf.apiBaseUrl}/api`, // Uses environment-based API URL
+  baseURL: base,
   headers: {
     'Content-Type': 'application/json',
   },
