@@ -513,6 +513,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // -----------------------------
+  // Phone verification endpoints
+  // -----------------------------
+  const { TwilioVerifyService } = await import('./services/twilioVerify');
+
+  // Get phone verification status for current user
+  app.get('/api/phone/status', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const status = await storage.getPhoneStatus(req.user.id);
+      if (!status) return res.status(404).json({ message: 'User or phone status not found' });
+      res.json({
+        phoneNumber: status.phoneNumber,
+        phoneVerified: status.phoneVerified,
+        otpCooldownSeconds: status.otpCooldown ? Math.max(0, Math.ceil((new Date(status.otpCooldown).getTime() - Date.now()) / 1000)) : 0,
+      });
+    } catch (err) {
+      console.error('Error fetching phone status:', err);
+      res.status(500).json({ message: 'Error fetching phone status', error: (err as Error).message });
+    }
+  });
+
+  // Send OTP to phone (store phone, set cooldown, save verification sid)
+  app.post('/api/phone/send-otp', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { phoneNumber, channel = 'whatsapp' } = req.body || {};
+      if (!phoneNumber) return res.status(400).json({ message: 'Phone number is required' });
+
+      // Format and validate
+      const formatted = TwilioVerifyService.formatPhoneNumber(String(phoneNumber));
+      if (!TwilioVerifyService.isValidPhoneNumber(formatted)) {
+        return res.status(400).json({ message: 'Invalid phone number' });
+      }
+
+      // Ensure phone not taken by another user
+      const taken = await storage.isPhoneNumberTaken(formatted, req.user.id);
+      if (taken) return res.status(409).json({ message: 'Phone number already registered' });
+
+      // Send OTP via Twilio service
+      const result = await TwilioVerifyService.sendOTP(formatted, channel as any);
+      if (!result.success) {
+        console.error('Failed to send phone OTP:', result.message);
+        return res.status(500).json({ message: result.message || 'Failed to send OTP' });
+      }
+
+      // Persist verification SID and phone on user record
+      if (result.sid) await storage.setVerificationSid(req.user.id, result.sid);
+      await storage.updatePhoneNumber(req.user.id, formatted);
+      await storage.setOTPCooldown(req.user.id);
+
+      res.json({ success: true, message: result.message || 'OTP sent', channel: result.channel });
+    } catch (err) {
+      console.error('Error sending phone OTP:', err);
+      res.status(500).json({ message: 'Error sending OTP', error: (err as Error).message });
+    }
+  });
+
+  // Verify OTP for phone
+  app.post('/api/phone/verify-otp', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { otp } = req.body || {};
+      if (!otp) return res.status(400).json({ message: 'OTP code is required' });
+
+      const phone = await storage.getPhoneNumberByUserId(req.user.id);
+      if (!phone) return res.status(400).json({ message: 'No phone number set for user' });
+
+      const result = await TwilioVerifyService.verifyOTP(phone, String(otp));
+      if (!result.success) return res.status(401).json({ message: result.message || 'Invalid or expired OTP' });
+
+      // Mark as verified
+      await storage.verifyPhone(req.user.id);
+      res.json({ success: true, message: 'Phone verified successfully' });
+    } catch (err) {
+      console.error('Error verifying phone OTP:', err);
+      res.status(500).json({ message: 'Error verifying OTP', error: (err as Error).message });
+    }
+  });
+
+  // Resend OTP (uses stored phone number)
+  app.post('/api/phone/resend-otp', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { channel = 'whatsapp' } = req.body || {};
+      const phone = await storage.getPhoneNumberByUserId(req.user.id);
+      if (!phone) return res.status(400).json({ message: 'No phone number set for user' });
+
+      const result = await TwilioVerifyService.sendOTP(phone, channel as any);
+      if (!result.success) return res.status(500).json({ message: result.message || 'Failed to resend OTP' });
+
+      if (result.sid) await storage.setVerificationSid(req.user.id, result.sid);
+      await storage.setOTPCooldown(req.user.id);
+      res.json({ success: true, message: result.message || 'OTP resent', channel: result.channel });
+    } catch (err) {
+      console.error('Error resending phone OTP:', err);
+      res.status(500).json({ message: 'Error resending OTP', error: (err as Error).message });
+    }
+  });
+
   // Student ID Verification Routes
   const { upload, validateImage, checkVerificationRateLimit } = await import('./middleware/imageValidation');
   const { IdVerificationService } = await import('./services/idVerification');
