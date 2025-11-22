@@ -62,17 +62,17 @@ export default function InternshipsPage() {
     const fetchInternships = async () => {
       try {
         // Fetch both old internships and new admin jobs
-        const [internshipsData, jobsRes] = await Promise.all([
+        const [internshipsRes, jobsRes] = await Promise.all([
           api.get('/api/internships'),
-          api.get('/api/jobs').catch(() => ({ success: false }))
+          api.get('/api/jobs').catch(() => null)
         ]);
         
-        let allInternships = Array.isArray(internshipsData) ? internshipsData : [];
+        let allInternships = Array.isArray(internshipsRes.data) ? internshipsRes.data : [];
         
         // Add admin jobs if available
-        if (jobsRes && jobsRes.success && jobsRes.jobs) {
+        if (jobsRes && jobsRes.data && jobsRes.data.success && jobsRes.data.jobs) {
           // Transform admin jobs to match internship format
-          const transformedJobs = jobsRes.jobs.map((job: any) => ({
+          const transformedJobs = jobsRes.data.jobs.map((job: any) => ({
             $id: `job-${job.id}`,
             role: job.title,
             company: job.company_name,
@@ -142,13 +142,13 @@ export default function InternshipsPage() {
       const formData = new FormData();
       formData.append('resume', resumeFile);
 
-      const result = await api.post('/api/resume/upload', formData);
+      const { data } = await api.post('/api/resume/upload', formData);
 
-      if (result.success) {
+      if (data.success) {
         toast.success('Resume parsed successfully! ✅');
-        setParsedData(result.data);
+        setParsedData(data.data);
       } else {
-        toast.error(result.message || 'Failed to parse resume');
+        toast.error(data.message || 'Failed to parse resume');
       }
     } catch (error: any) {
       console.error('Resume upload error:', error);
@@ -185,13 +185,13 @@ export default function InternshipsPage() {
         name: parsedData.name,
       };
 
-      const result = await api.put('/api/users/profile', profileData);
-      if (result.success) {
+      const { data } = await api.put('/api/users/profile', profileData);
+      if (data.success) {
         toast.success('Profile updated with resume data! ✅');
         handleResetResume();
         setShowResumeDialog(false);
       } else {
-        toast.error(result.message || 'Failed to save profile');
+        toast.error(data.message || 'Failed to save profile');
       }
     } catch (error: any) {
       console.error('Error saving profile:', error);

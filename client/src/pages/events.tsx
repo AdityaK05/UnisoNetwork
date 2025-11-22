@@ -65,7 +65,7 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const data = await api.get('/api/events');
+      const { data } = await api.get('/api/events');
       const formattedEvents = data.map((doc: any) => ({
         id: doc.id || doc.$id,
         title: doc.title,

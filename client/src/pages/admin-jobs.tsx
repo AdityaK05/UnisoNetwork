@@ -47,7 +47,7 @@ const AdminJobPortal: React.FC = () => {
 
   const fetchJobs = async () => {
     try {
-      const data = await api.get('/api/admin/jobs');
+      const { data } = await api.get('/api/admin/jobs');
       if (data.success) {
         setJobs(data.jobs);
       }
@@ -70,7 +70,7 @@ const AdminJobPortal: React.FC = () => {
         skills_required: formData.skills_required.split(',').map(s => s.trim()).filter(Boolean),
       };
 
-      const data = editingJob
+      const { data } = editingJob
         ? await api.put(endpoint, payload)
         : await api.post(endpoint, payload);
 
@@ -111,7 +111,7 @@ const AdminJobPortal: React.FC = () => {
     if (!confirm('Are you sure you want to delete this job posting?')) return;
 
     try {
-      const data = await api.delete(`/api/admin/jobs/${jobId}`);
+      const { data } = await api.delete(`/api/admin/jobs/${jobId}`);
       if (data.success) {
         toast.success('Job deleted successfully!');
         fetchJobs();
@@ -128,7 +128,7 @@ const AdminJobPortal: React.FC = () => {
     try {
       const newStatus = job.status === 'Active' ? 'Closed' : 'Active';
 
-      const data = await api.put(`/api/admin/jobs/${job.id}`, { status: newStatus });
+      const { data } = await api.put(`/api/admin/jobs/${job.id}`, { status: newStatus });
 
       if (data.success) {
         toast.success(`Job ${newStatus === 'Active' ? 'activated' : 'closed'} successfully!`);

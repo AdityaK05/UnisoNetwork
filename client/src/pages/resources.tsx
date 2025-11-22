@@ -57,7 +57,7 @@ export default function ResourcesPage() {
   const fetchResources = async () => {
     try {
       setLoading(true);
-      const data = await api.get('/api/resources');
+      const { data } = await api.get('/api/resources');
       const formattedResources = data.map((doc: any) => ({
         id: doc.id || doc.$id,
         title: doc.title,
