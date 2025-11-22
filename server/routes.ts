@@ -1396,6 +1396,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // PUT /api/users/profile - Update user profile with resume data
+  app.put(
+    '/api/users/profile',
+    authMiddleware,
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) {
+          return res.status(401).json({
+            success: false,
+            message: 'Unauthorized. Please log in to update your profile.',
+          });
+        }
+
+        const {
+          name,
+          bio,
+          skills,
+          education,
+          experience,
+          projects,
+          summary,
+          github_username,
+          linkedin_url,
+          portfolio_url,
+        } = req.body;
+
+        const client = await pool.connect();
+        try {
+          const result = await client.query(
+            `UPDATE users 
+             SET name = COALESCE($1, name),
+                 bio = COALESCE($2, bio),
+                 skills = COALESCE($3, skills),
+                 education = COALESCE($4, education),
+                 experience = COALESCE($5, experience),
+                 projects = COALESCE($6, projects),
+                 summary = COALESCE($7, summary),
+                 github_username = COALESCE($8, github_username),
+                 linkedin_url = COALESCE($9, linkedin_url),
+                 portfolio_url = COALESCE($10, portfolio_url),
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $11
+             RETURNING id, name, email, avatar_url, bio, skills, education, experience, projects, summary, github_username, linkedin_url, portfolio_url, created_at, updated_at`,
+            [
+              name,
+              bio,
+              skills ? JSON.stringify(skills) : null,
+              education ? JSON.stringify(education) : null,
+              experience ? JSON.stringify(experience) : null,
+              projects ? JSON.stringify(projects) : null,
+              summary,
+              github_username,
+              linkedin_url,
+              portfolio_url,
+              userId,
+            ]
+          );
+
+          if (result.rows.length === 0) {
+            return res.status(404).json({
+              success: false,
+              message: 'User not found',
+            });
+          }
+
+          // Parse arrays back to arrays if they were stored as JSON strings
+          const user = result.rows[0];
+          user.skills = typeof user.skills === 'string' ? JSON.parse(user.skills) : user.skills;
+          user.education = typeof user.education === 'string' ? JSON.parse(user.education) : user.education;
+          user.experience = typeof user.experience === 'string' ? JSON.parse(user.experience) : user.experience;
+          user.projects = typeof user.projects === 'string' ? JSON.parse(user.projects) : user.projects;
+
+          res.json({
+            success: true,
+            message: 'Profile updated successfully!',
+            user,
+          });
+        } finally {
+          client.release();
+        }
+      } catch (error: any) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({
+          success: false,
+          message: error.message || 'Failed to update profile',
+        });
+      }
+    }
+  );
+
+  // GET /api/users/profile - Get current user's profile
+  app.get(
+    '/api/users/profile',
+    authMiddleware,
+    async (req: AuthRequest, res: Response) => {
+      try {
+        const userId = req.user?.id;
+        if (!userId) {
+          return res.status(401).json({
+            success: false,
+            message: 'Unauthorized. Please log in.',
+          });
+        }
+
+        const client = await pool.connect();
+        try {
+          const result = await client.query(
+            `SELECT id, name, email, avatar_url, bio, skills, education, experience, projects, summary, github_username, linkedin_url, portfolio_url, created_at, updated_at
+             FROM users
+             WHERE id = $1`,
+            [userId]
+          );
+
+          if (result.rows.length === 0) {
+            return res.status(404).json({
+              success: false,
+              message: 'User not found',
+            });
+          }
+
+          // Parse arrays back to arrays if they were stored as JSON strings
+          const user = result.rows[0];
+          user.skills = typeof user.skills === 'string' ? JSON.parse(user.skills) : (user.skills || []);
+          user.education = typeof user.education === 'string' ? JSON.parse(user.education) : (user.education || []);
+          user.experience = typeof user.experience === 'string' ? JSON.parse(user.experience) : (user.experience || []);
+          user.projects = typeof user.projects === 'string' ? JSON.parse(user.projects) : (user.projects || []);
+
+          res.json({
+            success: true,
+            user,
+          });
+        } finally {
+          client.release();
+        }
+      } catch (error: any) {
+        console.error('Error fetching profile:', error);
+        res.status(500).json({
+          success: false,
+          message: error.message || 'Failed to fetch profile',
+        });
+      }
+    }
+  );
+
   // =============================================================================
   // ADMIN & PLACEMENT COORDINATOR JOB PORTAL ROUTES
   // =============================================================================

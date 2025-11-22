@@ -167,6 +167,40 @@ export default function InternshipsPage() {
     }
   };
 
+  // Save parsed resume data to profile
+  const handleSaveToProfile = async () => {
+    if (!parsedData) {
+      toast.error('No resume data to save');
+      return;
+    }
+
+    setUploadingResume(true);
+    try {
+      const profileData = {
+        skills: parsedData.skills,
+        education: parsedData.education,
+        experience: parsedData.experience,
+        projects: parsedData.projects,
+        summary: parsedData.summary,
+        name: parsedData.name,
+      };
+
+      const result = await api.put('/api/users/profile', profileData);
+      if (result.success) {
+        toast.success('Profile updated with resume data! ✅');
+        handleResetResume();
+        setShowResumeDialog(false);
+      } else {
+        toast.error(result.message || 'Failed to save profile');
+      }
+    } catch (error: any) {
+      console.error('Error saving profile:', error);
+      toast.error('Failed to save profile. Please try again.');
+    } finally {
+      setUploadingResume(false);
+    }
+  };
+
   const filteredInternships = internships.filter((internship) => {
     const matchesSearch =
       searchQuery === '' ||
@@ -332,13 +366,22 @@ export default function InternshipsPage() {
                           </div>
                         )}
 
-                        <div className="flex gap-2">
-                          <Button onClick={handleResetResume} variant="outline" className="flex-1">
-                            Upload Another
+                        <div className="flex gap-2 flex-col">
+                          <Button 
+                            onClick={handleSaveToProfile}
+                            disabled={uploadingResume}
+                            className="w-full bg-green-600 hover:bg-green-700"
+                          >
+                            {uploadingResume ? 'Saving...' : 'Save to Profile'}
                           </Button>
-                          <Button onClick={() => setShowResumeDialog(false)} className="flex-1">
-                            Done
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button onClick={handleResetResume} variant="outline" className="flex-1">
+                              Upload Another
+                            </Button>
+                            <Button onClick={() => setShowResumeDialog(false)} className="flex-1">
+                              Done
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     )}
