@@ -404,6 +404,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // -----------------------------
+  // Phone signup OTP (no auth required)
+  // -----------------------------
+  app.post('/api/phone/send-otp-signup', rateLimiters.otpSend, async (req: Request, res: Response) => {
+    try {
+      const { phoneNumber, channel = 'whatsapp' } = req.body || {};
+      if (!phoneNumber) return res.status(400).json({ message: 'Phone number is required' });
+
+      const { TwilioVerifyService } = await import('./services/twilioVerify');
+
+      const formatted = TwilioVerifyService.formatPhoneNumber(String(phoneNumber));
+      if (!TwilioVerifyService.isValidPhoneNumber(formatted)) {
+        return res.status(400).json({ message: 'Invalid phone number' });
+      }
+
+      // Send OTP via Twilio (or dev fallback)
+      const result = await TwilioVerifyService.sendOTP(formatted, channel as any);
+      if (!result.success) {
+        console.error('Failed to send signup phone OTP:', result.message);
+        return res.status(500).json({ message: result.message || 'Failed to send OTP' });
+      }
+
+      res.json({ success: true, message: result.message || 'OTP sent', channel: result.channel });
+    } catch (err) {
+      console.error('Error sending phone signup OTP:', err);
+      res.status(500).json({ message: 'Error sending OTP', error: (err as Error).message });
+    }
+  });
+
   // Signup with email verification
   app.post('/api/users/signup-with-email', async (req: Request, res: Response) => {
     try {
@@ -510,6 +539,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: 'Signup failed', 
           error: (err as Error).message 
         });
+    }
+  });
+
+  // Signup with phone verification (no auth required)
+  app.post('/api/users/signup-with-phone', async (req: Request, res: Response) => {
+    try {
+      const { name, email, password, phoneNumber, otp } = req.body;
+
+      if (!name || !email || !password || !phoneNumber || !otp) {
+        return res.status(400).json({ message: 'All fields are required' });
+      }
+
+      // Validate email and college domain
+      if (!isValidCollegeEmail(email)) {
+        return res.status(400).json({ message: getCollegeEmailError(email) });
+      }
+
+      // Check if email already exists
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) return res.status(409).json({ message: 'Email already registered' });
+
+      const { TwilioVerifyService } = await import('./services/twilioVerify');
+
+      const formatted = TwilioVerifyService.formatPhoneNumber(String(phoneNumber));
+      if (await storage.isPhoneNumberTaken(formatted, undefined)) {
+        return res.status(409).json({ message: 'Phone number already registered' });
+      }
+
+      // Verify OTP with Twilio (or dev fallback)
+      const verifyResult = await TwilioVerifyService.verifyOTP(formatted, String(otp));
+      if (!verifyResult.success) {
+        return res.status(401).json({ message: verifyResult.message || 'Invalid or expired OTP' });
+      }
+
+      // Hash password and create user
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = await storage.createUser({ name, email, password_hash: hashedPassword });
+
+      // Persist phone and mark verified
+      await storage.updatePhoneNumber(user.id, formatted);
+      await storage.verifyPhone(user.id);
+
+      // Generate token
+      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+
+      res.json({
+        success: true,
+        message: 'Account created successfully',
+        token,
+        user: { id: user.id, name: user.name, email: user.email, phoneNumber: formatted }
+      });
+    } catch (err) {
+      console.error('Signup with phone failed:', err);
+      res.status(500).json({ message: 'Signup failed', error: (err as Error).message });
     }
   });
 
