@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from '../../hooks/AuthContext';
 import { useRef } from 'react';
 import { Link, useLocation } from "wouter";
-import { apiUrl } from '@/lib/api';
+// Note: Navbar uses AuthContext's `user` (includes optional `role`) —
+// avoid extra direct fetches here so UI reflects central auth state.
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -81,32 +82,9 @@ export default function Navbar() {
 
   const { user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [userRole, setUserRole] = useState<string>('student');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch user role
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      if (!user) return;
-      
-      try {
-        const token = localStorage.getItem('token');
-  const response = await fetch(apiUrl('/api/users/me'), {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        const data = await response.json();
-        if (data.role) {
-          setUserRole(data.role);
-        }
-      } catch (error) {
-        console.error('Error fetching user role:', error);
-      }
-    };
-    
-    fetchUserRole();
-  }, [user]);
+  // Role is read from `user?.role` provided by AuthContext (populated at sign-in / on load).
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -178,7 +156,7 @@ export default function Navbar() {
                     {dropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 z-50 border">
                       <Link href="/profile" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">My Profile</Link>
-                      {(userRole === 'admin' || userRole === 'coordinator') && (
+                      {(user?.role === 'admin' || user?.role === 'coordinator') && (
                         <Link href="/admin/jobs" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 font-semibold text-primary">
                           📋 Admin Portal
                         </Link>
@@ -264,7 +242,7 @@ export default function Navbar() {
                     {dropdownOpen && (
                       <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg py-2 z-50 border">
                         <Link href="/profile" className="block px-4 py-2 text-gray-700 hover:bg-blue-50">My Profile</Link>
-                        {(userRole === 'admin' || userRole === 'coordinator') && (
+                        {(user?.role === 'admin' || user?.role === 'coordinator') && (
                           <Link href="/admin/jobs" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 font-semibold text-primary">
                             📋 Admin Portal
                           </Link>

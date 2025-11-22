@@ -4,7 +4,7 @@ import { Link, useLocation } from 'wouter';
 import { toast } from 'react-hot-toast';
 import { isValidCollegeEmail, getCollegeEmailError } from '../utils/collegeEmailValidator';
 import * as faceapi from '@vladmandic/face-api';
-import { apiUrl } from '../lib/api';
+import api from '../services/api';
 
 interface SignupFormData {
   name: string;
@@ -144,36 +144,19 @@ const SignupWithEmail: React.FC = () => {
     setLoading(true);
 
     try {
-      // Send OTP to email
-      const response = await fetch(apiUrl('/api/email/send-otp-signup'), {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          name: formData.name
-        })
+      // Send OTP to email via central API
+      await api.post('/api/email/send-otp-signup', {
+        email: formData.email,
+        name: formData.name,
       });
-
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server error. Please try again later.');
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send verification email');
-      }
 
       toast.success('📧 Verification code sent to your email!');
       setStep(2);
       setResendCountdown(60);
     } catch (err: any) {
-      setError(err.message || 'Failed to send verification email');
-      toast.error(err.message || 'Failed to send verification email');
+      const msg = err?.response?.data?.message || err.message || 'Failed to send verification email';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -213,69 +196,62 @@ const SignupWithEmail: React.FC = () => {
 
     try {
       // First create the account
-      const signupResponse = await fetch(apiUrl('/api/users/signup-with-email'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          otp: otp,
-          rollNumber: formData.rollNumber,
-          collegeName: formData.collegeName,
-          course: formData.course,
-          yearOfAdmission: formData.yearOfAdmission
-        })
+      const signupRes = await api.post('/api/users/signup-with-email', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        otp: otp,
+        rollNumber: formData.rollNumber,
+        collegeName: formData.collegeName,
+        course: formData.course,
+        yearOfAdmission: formData.yearOfAdmission,
       });
 
-      const contentType = signupResponse.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server error. Please try again later.');
+      const signupData = signupRes.data;
+      if (!signupData || !signupData.token) {
+        throw new Error('Failed to create account');
       }
 
-      const signupData = await signupResponse.json();
-
-      if (!signupResponse.ok) {
-        throw new Error(signupData.message || 'Failed to create account');
-      }
-
-      // Store token for later use
+      // Store token for later use (used only for subsequent requests in this flow)
       setUserToken(signupData.token);
 
       // Now upload and verify ID card
-      const formDataUpload = new FormData();
-      formDataUpload.append('idCard', idCard);
-      formDataUpload.append('name', formData.name);
-      formDataUpload.append('rollNumber', formData.rollNumber);
-      formDataUpload.append('collegeName', formData.collegeName);
-      formDataUpload.append('course', formData.course);
-      formDataUpload.append('yearOfAdmission', formData.yearOfAdmission);
+      const uploadForm = new FormData();
+      uploadForm.append('idCard', idCard as File);
+      uploadForm.append('name', formData.name);
+      uploadForm.append('rollNumber', formData.rollNumber);
+      uploadForm.append('collegeName', formData.collegeName);
+      uploadForm.append('course', formData.course);
+      uploadForm.append('yearOfAdmission', formData.yearOfAdmission);
 
-      const uploadResponse = await fetch(apiUrl('/api/id-verification/upload-id'), {
-        method: 'POST',
+      // Use axios directly via api instance but attach Authorization header with the token
+      const uploadRes = await api.post('/api/id-verification/upload-id', uploadForm, {
         headers: {
-          'Authorization': `Bearer ${signupData.token}`
+          Authorization: `Bearer ${signupData.token}`,
+          'Content-Type': 'multipart/form-data',
         },
-        body: formDataUpload
       });
 
-      const uploadData = await uploadResponse.json();
+      const uploadData = uploadRes.data;
 
-      if (!uploadResponse.ok) {
+      if (!uploadRes || (uploadRes.status && uploadRes.status >= 400)) {
         toast.error('Account created but ID verification failed.');
       } else {
         setVerificationResult(uploadData);
         setIdCardImageUrl(uploadData.imageUrl); // Store ID card URL for face verification
-        toast.success(uploadData.verificationStatus === 'Verified' 
-          ? '✅ ID verified! Now verify your face' 
-          : '⚠️ ID uploaded. Now verify your face');
+        toast.success(
+          uploadData.verificationStatus === 'Verified'
+            ? '✅ ID verified! Now verify your face'
+            : '⚠️ ID uploaded. Now verify your face'
+        );
       }
 
       // Move to face verification step
       setStep(4);
     } catch (err: any) {
-      setError(err.message || 'Failed to create account');
-      toast.error(err.message || 'Failed to create account');
+      const msg = err?.response?.data?.message || err.message || 'Failed to create account';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -338,34 +314,35 @@ const SignupWithEmail: React.FC = () => {
       faceFormData.append('selfieImage', selfieFile);
       faceFormData.append('matchScore', matchScore.toString());
 
-      const response = await fetch(apiUrl('/api/face-verification'), {
-        method: 'POST',
+      // Send to server with token
+      const res = await api.post('/api/face-verification', faceFormData, {
         headers: {
-          'Authorization': `Bearer ${userToken}`
+          Authorization: `Bearer ${userToken}`,
+          'Content-Type': 'multipart/form-data',
         },
-        body: faceFormData
       });
 
-      const result = await response.json();
+      const result = res.data;
 
-      if (response.ok && result.success) {
+      if (res.status >= 200 && res.status < 300 && result.success) {
         setFaceVerificationResult(result);
         toast.success('✅ Face verified successfully!');
-        
+
         // Log the user in now
-        login({ 
-          name: formData.name, 
-          email: formData.email 
+        login({
+          name: formData.name,
+          email: formData.email,
         } as any, userToken);
-        
+
         // Redirect to home
         setTimeout(() => setLocation('/'), 2000);
       } else {
         throw new Error(result.message || 'Face verification failed. Match score too low.');
       }
     } catch (err: any) {
-      setError(err.message || 'Face verification failed');
-      toast.error(err.message || 'Face verification failed');
+      const msg = err?.response?.data?.message || err.message || 'Face verification failed';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -378,33 +355,17 @@ const SignupWithEmail: React.FC = () => {
     setLoading(true);
     setError('');
 
-    try{
-      const response = await fetch(apiUrl('/api/email/send-otp-signup'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          name: formData.name
-        })
+    try {
+      await api.post('/api/email/send-otp-signup', {
+        email: formData.email,
+        name: formData.name,
       });
-
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server error. Please try again later.');
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to resend verification code');
-      }
-
       toast.success('📧 Verification code resent!');
       setResendCountdown(60);
     } catch (err: any) {
-      setError(err.message || 'Failed to resend verification code');
-      toast.error(err.message || 'Failed to resend verification code');
+      const msg = err?.response?.data?.message || err.message || 'Failed to resend verification code';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

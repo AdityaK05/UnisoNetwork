@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
+import api from '@/services/api';
 import { toast } from 'react-toastify';
 import {
   Upload,
@@ -54,10 +55,8 @@ export function IdCardUpload() {
 
   const fetchVerificationStatus = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/id-verification/status', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // Use central api instance which attaches Authorization token
+      const response = await api.get('/api/id-verification/status');
 
       setVerificationStatus({
         isVerified: response.data.isVerified,
@@ -110,17 +109,10 @@ export function IdCardUpload() {
       const formData = new FormData();
       formData.append('idCard', selectedFile);
 
-      const token = localStorage.getItem('token');
-      const response = await axios.post<VerificationResult>(
-        '/api/id-verification/upload-id',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Use api instance which will send Authorization header from localStorage
+      const response = await api.post<VerificationResult>('/api/id-verification/upload-id', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
 
       setResult(response.data);
 

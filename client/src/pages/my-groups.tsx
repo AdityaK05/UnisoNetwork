@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { apiUrl } from '@/lib/api';
+import api from '@/services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -15,11 +15,8 @@ export default function MyGroupsPage() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-  fetch(apiUrl('/api/groups/my'), {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    })
-      .then(res => res.json())
-      .then(data => setGroups(data))
+    api.get('/api/groups/my')
+      .then(res => setGroups(res.data || []))
       .catch(() => setGroups([]))
       .finally(() => setLoading(false));
   }, [user]);

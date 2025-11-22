@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { apiUrl } from '@/lib/api';
+import api from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -51,17 +51,10 @@ export default function FaceVerification() {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-
-  const response = await fetch(apiUrl('/api/face-verification/status'), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setIsFaceVerified(data.isFaceVerified);
-        setIdCardImageUrl(data.idCardImageUrl);
+      const response = await api.get('/api/face-verification/status');
+      if (response && response.data) {
+        setIsFaceVerified(response.data.isFaceVerified);
+        setIdCardImageUrl(response.data.idCardImageUrl);
       }
     } catch (error) {
       console.error('Error checking verification status:', error);
@@ -176,15 +169,11 @@ export default function FaceVerification() {
       formData.append('selfieImage', selfieFile);
       formData.append('matchScore', matchScore.toString());
 
-  const response = await fetch(apiUrl('/api/face-verification'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
+      const res = await api.post('/api/face-verification', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const result = await response.json();
+      const result = res.data;
       setVerificationResult(result);
 
       if (result.success) {

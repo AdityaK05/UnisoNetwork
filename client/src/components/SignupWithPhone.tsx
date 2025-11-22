@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiUrl } from '@/lib/api';
+import api from '@/services/api';
 import { useAuth } from '../hooks/AuthContext';
 import { Link, useLocation } from 'wouter';
 import { toast } from 'react-hot-toast';
@@ -74,28 +74,18 @@ const SignupWithPhone: React.FC = () => {
     setLoading(true);
 
     try {
-      // Send OTP to phone number (use runtime-safe apiUrl)
-      const response = await fetch(apiUrl('/api/phone/send-otp-signup'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: formData.phoneNumber,
-          email: formData.email
-        })
+      await api.post('/api/phone/send-otp-signup', {
+        phoneNumber: formData.phoneNumber,
+        email: formData.email,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send OTP');
-      }
 
       toast.success('OTP sent to your phone! 📱');
       setStep(2);
       setResendCountdown(60);
     } catch (err: any) {
-      setError(err.message || 'Failed to send OTP');
-      toast.error(err.message || 'Failed to send OTP');
+      const msg = err?.response?.data?.message || err.message || 'Failed to send OTP';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -115,29 +105,24 @@ const SignupWithPhone: React.FC = () => {
 
     try {
       // Create account with verified phone
-  const response = await fetch(apiUrl('/api/users/signup-with-phone'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          phoneNumber: formData.phoneNumber,
-          otp: otp
-        })
+      const res = await api.post('/api/users/signup-with-phone', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phoneNumber: formData.phoneNumber,
+        otp: otp,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to create account');
+      const data = res.data;
+      if (!res || (res.status && res.status >= 400)) {
+        throw new Error(data?.message || 'Failed to create account');
       }
 
       toast.success('Account created successfully! 🎉');
-      
+
       // Log the user in
       login(data.user, data.token);
-      
+
       // Redirect to home
       setLocation('/');
     } catch (err: any) {
@@ -156,26 +141,17 @@ const SignupWithPhone: React.FC = () => {
     setError('');
 
     try {
-      const response = await fetch(apiUrl('/api/phone/send-otp-signup'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: formData.phoneNumber,
-          email: formData.email
-        })
+      await api.post('/api/phone/send-otp-signup', {
+        phoneNumber: formData.phoneNumber,
+        email: formData.email,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to resend OTP');
-      }
 
       toast.success('OTP resent! 📱');
       setResendCountdown(60);
     } catch (err: any) {
-      setError(err.message || 'Failed to resend OTP');
-      toast.error(err.message || 'Failed to resend OTP');
+      const msg = err?.response?.data?.message || err.message || 'Failed to resend OTP';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

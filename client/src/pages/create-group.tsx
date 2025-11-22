@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { apiUrl } from '@/lib/api';
+import api from '@/services/api';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,15 +30,8 @@ export default function CreateGroupPage() {
     if (!user) return toast.error('Login required');
     setCreating(true);
     try {
-  const res = await fetch(apiUrl('/api/groups'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error('Failed to create group');
+      const res = await api.post('/api/groups', form);
+      if (!res || (res.status && res.status >= 400)) throw new Error('Failed to create group');
       toast.success('Group created!');
       navigate('/groups');
     } catch {

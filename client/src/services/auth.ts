@@ -15,6 +15,8 @@ export interface User {
   name: string;
   email: string;
   avatar_url?: string;
+  // role comes from the backend (e.g. 'student', 'admin', 'coordinator')
+  role?: string;
   created_at?: string;
 }
 
