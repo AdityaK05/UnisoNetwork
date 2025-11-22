@@ -27,12 +27,12 @@ import api from './api';
 
 export const authService = {
   async login(data: LoginData): Promise<AuthResponse> {
-    const res = await api.post('/users/login', data);
+    const res = await api.post('/api/users/login', data);
     return res.data as AuthResponse;
   },
 
   async register(data: RegisterData): Promise<AuthResponse> {
-    await api.post('/users', {
+    await api.post('/api/users', {
       name: data.name,
       email: data.email,
       password_hash: data.password,
@@ -48,7 +48,7 @@ export const authService = {
   },
 
   async getCurrentUser(): Promise<User> {
-    const res = await api.get('/users/me');
+    const res = await api.get('/api/users/me');
     return res.data as User;
   },
 

@@ -28,27 +28,27 @@ api.interceptors.request.use((config) => {
 // Phone verification API endpoints
 export const phoneAPI = {
   // Get phone verification status
-  getStatus: () => api.get('/phone/status'),
+  getStatus: () => api.get('/api/phone/status'),
   
   // Send OTP to phone number with channel selection
   sendOTP: (phoneNumber: string, channel: 'whatsapp' | 'sms' = 'whatsapp', captchaToken?: string) => 
-    api.post('/phone/send-otp', { phoneNumber, channel, captchaToken }),
+    api.post('/api/phone/send-otp', { phoneNumber, channel, captchaToken }),
   
   // Verify OTP code
-  verifyOTP: (otp: string) => api.post('/phone/verify-otp', { otp }),
+  verifyOTP: (otp: string) => api.post('/api/phone/verify-otp', { otp }),
   
   // Resend OTP with channel selection
   resendOTP: (channel: 'whatsapp' | 'sms' = 'whatsapp') => 
-    api.post('/phone/resend-otp', { channel }),
+    api.post('/api/phone/resend-otp', { channel }),
 };
 
 // Email verification API endpoints
 export const emailAPI = {
   // Send email verification code
-  sendVerification: (email: string) => api.post('/email/send-verification', { email }),
+  sendVerification: (email: string) => api.post('/api/email/send-verification', { email }),
   
   // Verify email code
-  verifyCode: (code: string) => api.post('/email/verify-code', { code }),
+  verifyCode: (code: string) => api.post('/api/email/verify-code', { code }),
 };
 
 export default api;
