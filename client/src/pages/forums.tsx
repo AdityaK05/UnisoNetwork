@@ -16,7 +16,7 @@ import {
   X
 } from "lucide-react";
 import MainLayout from "@/components/layout/MainLayout";
-import { apiUrl } from '@/lib/api';
+import api from '@/services/api';
 
 type Thread = {
   id: number;
@@ -84,9 +84,8 @@ export default function ForumsPage(): JSX.Element {
     setLoading(true);
     setError(null);
     try {
-  const res = await fetch(apiUrl('/api/forums'));
-      if (!res.ok) throw new Error('Failed to fetch threads');
-      const data = await res.json();
+      const res = await api.get('/api/forums');
+      const data = res.data;
       setThreads(Array.isArray(data) ? data : []);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch threads');
@@ -220,35 +219,15 @@ export default function ForumsPage(): JSX.Element {
     setShowNewThread(false);
     
     try {
-  const res = await fetch(apiUrl('/api/forums'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          title: newThread.title,
-          content: newThread.content,
-          images: images.map((img) => ({ ...img })),
-          category: newThread.category,
-          tags: newThread.tags ? newThread.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
-          trending: newThread.trending,
-          draft: isDraft,
-        }),
+      const res = await api.post('/api/forums', {
+        title: newThread.title,
+        content: newThread.content,
+        images: images.map((img) => ({ ...img })),
+        category: newThread.category,
+        tags: newThread.tags ? newThread.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        trending: newThread.trending,
+        draft: isDraft,
       });
-
-      if (!res.ok) {
-        // Remove optimistic thread on error
-        setThreads((prev) => prev.filter((t) => t.id !== tempThread.id));
-        
-        if (res.status === 401 || res.status === 403) {
-          alert('You must be logged in to post a thread. Please log in and try again.');
-          window.location.href = '/login';
-          return;
-        }
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.message || 'Failed to post thread');
-      }
 
       // success: refetch to get real thread with correct ID and author info
       await fetchThreads();
@@ -256,8 +235,10 @@ export default function ForumsPage(): JSX.Element {
       setImages([]);
       setCarouselIndex(0);
     } catch (err: any) {
-      alert(err.message || 'Failed to post thread');
-      // Optimistic thread already removed on !res.ok
+      // Remove optimistic thread on error
+      setThreads((prev) => prev.filter((t) => t.id !== tempThread.id));
+      const msg = err?.response?.data?.message || err.message || 'Failed to post thread';
+      alert(msg);
     } finally {
       setCreating(false);
     }
@@ -273,31 +254,7 @@ export default function ForumsPage(): JSX.Element {
 
     setSubmittingReply(threadId);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('You must be logged in to reply');
-        window.location.href = '/login';
-        return;
-      }
-
-  const res = await fetch(apiUrl(`/api/forums/${threadId}/posts`), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ content }),
-      });
-
-      if (!res.ok) {
-        if (res.status === 401 || res.status === 403) {
-          alert('You must be logged in to reply. Please log in and try again.');
-          window.location.href = '/login';
-          return;
-        }
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.message || 'Failed to post reply');
-      }
+      await api.post(`/api/forums/${threadId}/posts`, { content });
 
       // Success: update reply count optimistically and clear input
       setThreads((prev) =>
@@ -308,10 +265,10 @@ export default function ForumsPage(): JSX.Element {
       setReplyContent((prev) => ({ ...prev, [threadId]: '' }));
       setReplyingTo(null);
       
-      // Optionally refetch threads to sync with server
+      // Refetch threads to sync with server
       await fetchThreads();
     } catch (err: any) {
-      alert(err.message || 'Failed to post reply');
+      alert(err.response?.data?.message || err.message || 'Failed to post reply');
     } finally {
       setSubmittingReply(null);
     }

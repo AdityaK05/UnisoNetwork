@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, MapPin, Users, CalendarDays, Sparkles, Search } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
-import { apiUrl } from '@/lib/api';
+import api from '@/services/api';
 import { toast } from 'react-hot-toast';
 
 // Available categories for filtering
@@ -38,8 +38,7 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-  const response = await fetch(apiUrl('/api/events'));
-      const data = await response.json();
+      const data = await api.get('/api/events');
       const formattedEvents = data.map((doc: any) => ({
         id: doc.id || doc.$id,
         title: doc.title,
@@ -104,17 +103,7 @@ export default function EventsPage() {
   // RSVP to an event
   const handleRSVP = async (eventId: string) => {
     try {
-  const response = await fetch(apiUrl(`/api/events/${eventId}/rsvp`), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to RSVP');
-      }
+      await api.post(`/api/events/${eventId}/rsvp`, {});
 
       toast.success("You've successfully RSVP'd to this event!");
       fetchEvents(); // Refresh the events list

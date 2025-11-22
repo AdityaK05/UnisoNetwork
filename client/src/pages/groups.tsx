@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { apiUrl } from '@/lib/api';
+import api from '@/services/api';
 import { Link } from 'wouter';
 import { Dialog, DialogTrigger, DialogContent } from '@/components/ui/dialog';
 import { useAuth } from '../hooks/AuthContext';
@@ -54,8 +54,8 @@ export default function GroupsPage() {
   const fetchGroups = async () => {
     try {
       setLoading(true);
-  const response = await fetch(apiUrl('/api/groups'));
-      const data = await response.json();
+      const response = await api.get('/api/groups');
+      const data = response.data;
       const formattedGroups = data.map((group: any) => ({
         id: group.id || group.$id,
         name: group.name,
@@ -76,10 +76,8 @@ export default function GroupsPage() {
   const fetchMyGroups = async () => {
     if (!user) return;
     try {
-  const res = await fetch(apiUrl('/api/groups/my'), {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      const data = await res.json();
+      const res = await api.get('/api/groups/my');
+      const data = res.data;
       setMyGroups(data.map((g: any) => g.id));
     } catch {}
   };
@@ -87,10 +85,8 @@ export default function GroupsPage() {
   const fetchFavorites = async () => {
     if (!user) return;
     try {
-  const res = await fetch(apiUrl('/api/groups/favorites'), {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
-      const data = await res.json();
+      const res = await api.get('/api/groups/favorites');
+      const data = res.data;
       setFavorites(data.map((g: any) => g.id));
     } catch {}
   };
@@ -113,10 +109,7 @@ export default function GroupsPage() {
     const isFav = favorites.includes(id);
     setFavorites(prev => isFav ? prev.filter(favId => favId !== id) : [...prev, id]);
     try {
-  await fetch(apiUrl(`/api/groups/${id}/favorite`), {
-        method: isFav ? 'DELETE' : 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
+      await api.post(`/api/groups/${id}/favorite`);
     } catch {
       toast.error('Failed to update favorite');
     }
@@ -125,10 +118,7 @@ export default function GroupsPage() {
   const handleJoinGroup = async (groupId: number) => {
     if (!user) return toast.error('Login to join groups');
     try {
-  await fetch(apiUrl(`/api/groups/${groupId}/join`), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      });
+      await api.post(`/api/groups/${groupId}/join`);
       setMyGroups(prev => [...prev, groupId]);
       toast.success('Joined group!');
     } catch {
@@ -173,15 +163,8 @@ export default function GroupsPage() {
               e.preventDefault();
               setCreating(true);
               try {
-                const res = await fetch(apiUrl('/api/groups'), {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                  },
-                  body: JSON.stringify(groupForm),
-                });
-                if (!res.ok) throw new Error('Failed to create group');
+                const res = await api.post('/api/groups', groupForm);
+                if (!res || (res.status && res.status >= 400)) throw new Error('Failed to create group');
                 setGroupForm(GROUP_FORM_INITIAL);
                 setShowCreateModal(false);
                 fetchGroups();

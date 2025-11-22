@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { apiUrl } from '@/lib/api';
+import api from '@/services/api';
 import { useAuth } from '../hooks/AuthContext';
 import { useLocation } from 'wouter';
 import { toast } from 'react-hot-toast';
@@ -47,14 +47,7 @@ const AdminJobPortal: React.FC = () => {
 
   const fetchJobs = async () => {
     try {
-      const token = localStorage.getItem('token');
-  const response = await fetch(apiUrl('/api/admin/jobs'), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
+      const data = await api.get('/api/admin/jobs');
       if (data.success) {
         setJobs(data.jobs);
       }
@@ -71,23 +64,16 @@ const AdminJobPortal: React.FC = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-  const url = editingJob ? apiUrl(`/api/admin/jobs/${editingJob.id}`) : apiUrl('/api/admin/jobs');
-      const method = editingJob ? 'PUT' : 'POST';
+      const endpoint = editingJob ? `/api/admin/jobs/${editingJob.id}` : '/api/admin/jobs';
+      const payload = {
+        ...formData,
+        skills_required: formData.skills_required.split(',').map(s => s.trim()).filter(Boolean),
+      };
 
-  const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          skills_required: formData.skills_required.split(',').map(s => s.trim()).filter(Boolean),
-        }),
-      });
+      const data = editingJob
+        ? await api.put(endpoint, payload)
+        : await api.post(endpoint, payload);
 
-      const data = await response.json();
       if (data.success) {
         toast.success(editingJob ? 'Job updated successfully!' : 'Job posted successfully!');
         setShowForm(false);
@@ -125,15 +111,7 @@ const AdminJobPortal: React.FC = () => {
     if (!confirm('Are you sure you want to delete this job posting?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-  const response = await fetch(apiUrl(`/api/admin/jobs/${jobId}`), {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
+      const data = await api.delete(`/api/admin/jobs/${jobId}`);
       if (data.success) {
         toast.success('Job deleted successfully!');
         fetchJobs();
@@ -148,19 +126,10 @@ const AdminJobPortal: React.FC = () => {
 
   const handleToggleStatus = async (job: Job) => {
     try {
-      const token = localStorage.getItem('token');
       const newStatus = job.status === 'Active' ? 'Closed' : 'Active';
 
-  const response = await fetch(apiUrl(`/api/admin/jobs/${job.id}`), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const data = await api.put(`/api/admin/jobs/${job.id}`, { status: newStatus });
 
-      const data = await response.json();
       if (data.success) {
         toast.success(`Job ${newStatus === 'Active' ? 'activated' : 'closed'} successfully!`);
         fetchJobs();

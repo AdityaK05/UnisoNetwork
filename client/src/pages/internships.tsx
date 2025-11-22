@@ -28,7 +28,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import MainLayout from '@/components/layout/MainLayout';
-import { apiUrl } from '@/lib/api';
+import api from '@/services/api';
 import { toast } from 'react-hot-toast';
 
 const DOMAINS = ['All', 'Tech', 'Design', 'Marketing', 'Business', 'Finance'];
@@ -62,38 +62,33 @@ export default function InternshipsPage() {
     const fetchInternships = async () => {
       try {
         // Fetch both old internships and new admin jobs
-        const [internshipsRes, jobsRes] = await Promise.all([
-          fetch(apiUrl('/api/internships')),
-          fetch(apiUrl('/api/jobs'))
+        const [internshipsData, jobsRes] = await Promise.all([
+          api.get('/api/internships'),
+          api.get('/api/jobs').catch(() => ({ success: false }))
         ]);
-        
-        const internshipsData = await internshipsRes.json();
         
         let allInternships = Array.isArray(internshipsData) ? internshipsData : [];
         
         // Add admin jobs if available
-        if (jobsRes.ok) {
-          const jobsData = await jobsRes.json();
-          if (jobsData.success && jobsData.jobs) {
-            // Transform admin jobs to match internship format
-            const transformedJobs = jobsData.jobs.map((job: any) => ({
-              $id: `job-${job.id}`,
-              role: job.title,
-              company: job.company_name,
-              location: job.location || 'Not specified',
-              type: job.job_type,
-              domain: 'Tech', // Default domain
-              description: job.description || '',
-              applyLink: job.application_link || '#',
-              postedDate: new Date(job.posted_at).toLocaleDateString(),
-              logo: '💼',
-              companyColor: 'bg-gradient-card-3',
-              salaryRange: job.salary_range,
-              skills: job.skills_required || [],
-              deadline: job.application_deadline,
-            }));
-            allInternships = [...transformedJobs, ...allInternships];
-          }
+        if (jobsRes && jobsRes.success && jobsRes.jobs) {
+          // Transform admin jobs to match internship format
+          const transformedJobs = jobsRes.jobs.map((job: any) => ({
+            $id: `job-${job.id}`,
+            role: job.title,
+            company: job.company_name,
+            location: job.location || 'Not specified',
+            type: job.job_type,
+            domain: 'Tech', // Default domain
+            description: job.description || '',
+            applyLink: job.application_link || '#',
+            postedDate: new Date(job.posted_at).toLocaleDateString(),
+            logo: '💼',
+            companyColor: 'bg-gradient-card-3',
+            salaryRange: job.salary_range,
+            skills: job.skills_required || [],
+            deadline: job.application_deadline,
+          }));
+          allInternships = [...transformedJobs, ...allInternships];
         }
         
         setInternships(allInternships);
@@ -147,17 +142,9 @@ export default function InternshipsPage() {
       const formData = new FormData();
       formData.append('resume', resumeFile);
 
-  const response = await fetch(apiUrl('/api/resume/upload'), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      const result = await api.post('/api/resume/upload', formData);
 
-      const result = await response.json();
-
-      if (response.ok && result.success) {
+      if (result.success) {
         toast.success('Resume parsed successfully! ✅');
         setParsedData(result.data);
       } else {
