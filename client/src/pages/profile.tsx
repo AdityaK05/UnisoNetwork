@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import MainLayout from '@/components/layout/MainLayout';
-import { Edit2, Save, X, Plus, Trash2, Download } from 'lucide-react';
+import { Edit2, Save, X, Plus, Trash2, Download, Star, GitBranch, ExternalLink } from 'lucide-react';
 
 interface UserProfile {
   name?: string;
@@ -24,18 +24,35 @@ interface UserProfile {
   avatar_url?: string;
 }
 
+interface GitHubRepo {
+  id: number;
+  name: string;
+  description: string | null;
+  url: string;
+  stars: number;
+  language: string | null;
+}
+
 const Profile: React.FC = () => {
   const { user, loading } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<UserProfile>({});
+  const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchProfile();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (formData.github_username && !isEditing) {
+      fetchGitHubRepos(formData.github_username);
+    }
+  }, [formData.github_username, isEditing]);
 
   const fetchProfile = async () => {
     try {
@@ -57,6 +74,33 @@ const Profile: React.FC = () => {
           avatar_url: user.avatar_url,
         });
       }
+    }
+  };
+
+  const fetchGitHubRepos = async (username: string) => {
+    if (!username) return;
+    setLoadingRepos(true);
+    try {
+      const response = await fetch(`https://api.github.com/users/${username}/repos?sort=stars&per_page=6`);
+      if (response.ok) {
+        const repos: any[] = await response.json();
+        setGithubRepos(
+          repos
+            .filter((r: any) => !r.fork) // Filter out forks
+            .map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              description: r.description,
+              url: r.html_url,
+              stars: r.stargazers_count,
+              language: r.language,
+            }))
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching GitHub repos:', error);
+    } finally {
+      setLoadingRepos(false);
     }
   };
 
@@ -341,6 +385,52 @@ const Profile: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* GitHub Repositories */}
+              {formData.github_username && (
+                <div className="bg-white rounded-xl shadow p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <h2 className="text-2xl font-bold text-gray-800">GitHub Projects</h2>
+                    {loadingRepos && <span className="text-sm text-gray-500">Loading...</span>}
+                  </div>
+                  {githubRepos.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-3">
+                      {githubRepos.map((repo) => (
+                        <a
+                          key={repo.id}
+                          href={repo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block p-3 bg-gray-50 hover:bg-blue-50 rounded-lg border border-gray-200 hover:border-blue-300 transition"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-gray-800 hover:text-blue-600">{repo.name}</h3>
+                                {repo.language && (
+                                  <Badge className="bg-blue-100 text-blue-800 text-xs">{repo.language}</Badge>
+                                )}
+                              </div>
+                              {repo.description && (
+                                <p className="text-sm text-gray-600 mt-1">{repo.description}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 ml-4 text-gray-600 text-sm">
+                              <div className="flex items-center gap-1">
+                                <Star size={14} />
+                                <span>{repo.stars}</span>
+                              </div>
+                              <ExternalLink size={14} />
+                            </div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-600">No public repositories found on GitHub.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Sidebar */}
