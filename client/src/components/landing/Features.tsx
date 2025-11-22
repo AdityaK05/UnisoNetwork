@@ -27,7 +27,7 @@ export default function Features() {
     {
       icon: <MessageSquare className="h-7 w-7 text-white" />,
       emoji: "💬",
-      title: "Real Talk Forums",
+      title: "Connect Forums",
       description: "Ask anything, talk about everything. No filter conversations about classes, profs, and campus life.",
       gradientClass: "from-yellow-500 to-orange-500",
       action: "Get the tea →",

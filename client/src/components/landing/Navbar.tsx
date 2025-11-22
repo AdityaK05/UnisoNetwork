@@ -55,7 +55,7 @@ export default function Navbar() {
       hoverBg: "hover:bg-white",
     },
     {
-      name: "Real Talks",
+      name: "Connect",
       path: "/forums",
       icon: <MessageSquare className="h-4 w-4 md:mr-1.5 text-black" />,
       mobileIcon: <MessageSquare className="h-5 w-5 mr-3 text-black" />,

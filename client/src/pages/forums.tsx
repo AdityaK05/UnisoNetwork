@@ -76,7 +76,7 @@ export default function ForumsPage(): JSX.Element {
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
-    document.title = "UNiSO - Real Talk Forums";
+    document.title = "UNiSO - Connect Forums";
     fetchThreads();
   }, []);
 
@@ -327,7 +327,7 @@ export default function ForumsPage(): JSX.Element {
           <div className="flex flex-col md:flex-row md:items-end md:justify-between">
             <div className="flex items-center gap-3">
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight font-poppins">
-                💬 Real Talk: Ask. Vent. Vibe.
+                💬 Connect: Ask. Vent. Vibe.
               </h1>
               <Badge className="bg-white/10 text-white border-0">UNiSO</Badge>
             </div>
