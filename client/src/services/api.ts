@@ -3,7 +3,9 @@ import apiUrl from '../lib/api';
 
 // Create axios instance with runtime-resolved base URL so it never points at the
 // frontend origin (the runtime guard in `apiUrl` protects against that).
-const base = apiUrl('/api');
+// Use the backend root as base (no `/api` suffix) so callers may use `/api/...`
+// paths or absolute URLs. Trim trailing slash for consistency.
+const base = apiUrl('').replace(/\/$/, '');
 
 // Create axios instance with default config
 const api = axios.create({
