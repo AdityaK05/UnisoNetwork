@@ -11,6 +11,33 @@ import { toast } from 'react-hot-toast';
 // Available categories for filtering
 const CATEGORIES = ["All", "Social", "Career", "Food", "Workshop", "Entertainment", "Tech", "Sports", "Academic"];
 
+// Helper function to generate Google Calendar URL
+const generateGoogleCalendarUrl = (event: Event) => {
+  const startTime = event.date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  const endTime = new Date(event.date.getTime() + 60*60*1000).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  const params = new URLSearchParams({
+    text: event.title,
+    dates: `${startTime}/${endTime}`,
+    location: event.location,
+    details: event.description,
+  });
+  return `https://www.google.com/calendar/render?action=TEMPLATE&${params.toString()}`;
+};
+
+// Helper function to generate Outlook Calendar URL
+const generateOutlookCalendarUrl = (event: Event) => {
+  const params = new URLSearchParams({
+    path: '/calendar/action/compose',
+    rru: 'addevent',
+    startdt: event.date.toISOString(),
+    enddt: new Date(event.date.getTime() + 60*60*1000).toISOString(),
+    subject: event.title,
+    location: event.location,
+    body: event.description,
+  });
+  return `https://outlook.live.com/calendar/0/deeplink/compose?${params.toString()}`;
+};
+
 interface Event {
   id: string;
   title: string;
@@ -282,6 +309,27 @@ export default function EventsPage() {
                           >
                             RSVP Now
                           </Button>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => window.open(generateGoogleCalendarUrl(event), '_blank')}
+                            >
+                              <Calendar className="h-3 w-3 mr-1" />
+                              Google
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => window.open(generateOutlookCalendarUrl(event), '_blank')}
+                            >
+                              <Calendar className="h-3 w-3 mr-1" />
+                              Outlook
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -348,6 +396,27 @@ export default function EventsPage() {
                         >
                           RSVP Now
                         </Button>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs"
+                            onClick={() => window.open(generateGoogleCalendarUrl(event), '_blank')}
+                          >
+                            <Calendar className="h-3 w-3 mr-1" />
+                            Google
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs"
+                            onClick={() => window.open(generateOutlookCalendarUrl(event), '_blank')}
+                          >
+                            <Calendar className="h-3 w-3 mr-1" />
+                            Outlook
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
