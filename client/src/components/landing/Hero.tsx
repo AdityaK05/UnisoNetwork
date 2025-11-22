@@ -2,28 +2,12 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import api from "../../services/api";
+import React from "react";
+import { useAuth } from '../../hooks/AuthContext';
 
 
 export default function Hero() {
-  const [user, setUser] = useState<any>(null);
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setUser(null);
-      return;
-    }
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      api
-        .get(`/users/${payload.id}`)
-        .then((res) => setUser(res.data))
-        .catch(() => setUser(null));
-    } catch {
-      setUser(null);
-    }
-  }, []);
+  const { user } = useAuth();
 
   return (
     <section className="relative pt-28 pb-24 md:pt-36 md:pb-32 overflow-hidden bg-gradient-to-br from-[#A066F5] via-[#649DF5] to-[#35D6F5] text-white">
