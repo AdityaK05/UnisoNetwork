@@ -100,7 +100,7 @@ export default function GroupsPage() {
   const toggleFavorite = async (id: number) => {
     if (!user) return toast.error('Login to favorite groups');
     // TODO: implement when backend endpoint is available
-    toast.info('Favorites feature coming soon!');
+    toast('Favorites feature coming soon!');
   };
 
   const handleJoinGroup = async (groupId: number) => {
