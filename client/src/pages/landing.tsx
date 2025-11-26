@@ -21,11 +21,21 @@ export default function LandingPage() {
     }
   }, [user, loading, setLocation]);
 
-  // Show loading or redirect
-  if (loading || user) {
+  // Show loading spinner while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-400 to-blue-500">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
+  // If user exists, don't render (redirect will happen above)
+  if (user) {
     return null;
   }
 
+  // Show landing page for unauthenticated users
   return (
     <MainLayout>
       <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
