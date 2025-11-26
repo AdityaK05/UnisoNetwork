@@ -66,7 +66,7 @@ const AdminJobPortal: React.FC = () => {
     try {
       const endpoint = editingJob ? `/api/admin/jobs/${editingJob.id}` : '/api/admin/jobs';
       const payload = {
-        ...formData,
+        ...formData, 
         skills_required: formData.skills_required.split(',').map(s => s.trim()).filter(Boolean),
       };
 

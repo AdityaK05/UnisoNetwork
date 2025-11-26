@@ -80,7 +80,7 @@ export default function Navbar() {
     },
   ];
 
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -123,7 +123,7 @@ export default function Navbar() {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center space-x-6">
-            {user ? (
+            {!loading && (user ? (
               <>
                 {/* Navigation Links - Only show when logged in */}
                 {navLinks.map((link) => (
@@ -189,7 +189,7 @@ export default function Navbar() {
                   <Link href="/signup">Sign Up</Link>
                 </Button>
               </>
-            )}
+            ))}
           </div>
 
           {/* Mobile Nav Toggle */}
@@ -206,7 +206,7 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Nav Menu */}
-      {mobileMenuOpen && (
+      {mobileMenuOpen && !loading && (
         <div className="md:hidden">
           <div className="pt-4 pb-6 bg-white/10 backdrop-blur-xl rounded-b-2xl shadow-lg border-t border-white/10">
             <div className="px-4 mt-4">

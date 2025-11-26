@@ -85,10 +85,18 @@ export default function ForumsPage(): JSX.Element {
     setError(null);
     try {
       const res = await api.get('/api/forums');
-      const data = res.data;
-      setThreads(Array.isArray(data) ? data : []);
+      const data = res.data?.forums || res.data?.data || res.data;
+      if (Array.isArray(data)) {
+        setThreads(data);
+      } else if (data && typeof data === 'object') {
+        setThreads(Object.values(data));
+      } else {
+        setThreads([]);
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch threads');
+      console.error('Error fetching threads:', err);
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to fetch threads';
+      setError(errMsg);
       setThreads([]);
     } finally {
       setLoading(false);

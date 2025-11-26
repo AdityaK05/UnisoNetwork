@@ -32,18 +32,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const fetchUser = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      if (token) {
+      if (!token) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      try {
         const userData = await authService.getCurrentUser();
         setUser(userData);
-      } else {
+      } catch (err) {
+        console.error('Error fetching user:', err);
+        localStorage.removeItem('token');
         setUser(null);
       }
-    } catch (err) {
-      console.error('Error fetching user:', err);
-      localStorage.removeItem('token');
-      setUser(null);
     } finally {
       setLoading(false);
     }
