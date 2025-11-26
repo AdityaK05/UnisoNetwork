@@ -35,16 +35,11 @@ const Login: React.FC = () => {
             setLoginData(response);
             login(response.user, response.token);
 
-            // Check if phone is verified
-            const isPhoneVerified = await checkPhoneVerification();
+            // Redirect immediately - phone verification check can happen in background
+            setLocation('/');
             
-            if (!isPhoneVerified) {
-                // Show phone verification screen
-                setShowPhoneVerification(true);
-            } else {
-                // Phone already verified, go to home
-                setLocation('/');
-            }
+            // Optional: Check phone verification status in background (non-blocking)
+            checkPhoneVerification().catch(err => console.warn('Phone verification check failed:', err));
         } catch (err: unknown) {
             if (err instanceof Error) {
                 setError(err.message);
