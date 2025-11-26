@@ -48,7 +48,6 @@ export default function GroupsPage() {
     document.title = "UNiSO - Community Groups";
     fetchGroups();
     fetchMyGroups();
-    fetchFavorites();
   }, []);
 
   const fetchGroups = async () => {
@@ -82,14 +81,8 @@ export default function GroupsPage() {
     } catch {}
   };
 
-  const fetchFavorites = async () => {
-    if (!user) return;
-    try {
-      const res = await api.get('/api/groups/favorites');
-      const data = res.data;
-      setFavorites(data.map((g: any) => g.id));
-    } catch {}
-  };
+  // Favorites feature removed - endpoint not available in backend
+  // TODO: implement favorites if backend endpoint is added
 
   const toggleInterest = (interest: string) => {
     if (interest === "All") {
@@ -106,13 +99,8 @@ export default function GroupsPage() {
 
   const toggleFavorite = async (id: number) => {
     if (!user) return toast.error('Login to favorite groups');
-    const isFav = favorites.includes(id);
-    setFavorites(prev => isFav ? prev.filter(favId => favId !== id) : [...prev, id]);
-    try {
-      await api.post(`/api/groups/${id}/favorite`);
-    } catch {
-      toast.error('Failed to update favorite');
-    }
+    // TODO: implement when backend endpoint is available
+    toast.info('Favorites feature coming soon!');
   };
 
   const handleJoinGroup = async (groupId: number) => {

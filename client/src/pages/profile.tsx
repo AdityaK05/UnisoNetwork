@@ -116,12 +116,12 @@ const Profile: React.FC = () => {
     formDataObj.append('resume', file);
 
     try {
-      const { data } = await api.post('/api/users/upload-resume', formDataObj, {
+      const { data } = await api.post('/api/resume/upload', formDataObj, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      if (data.parsedResume) {
-        setResumePreview(data.parsedResume);
+      if (data.data) {
+        setResumePreview(data.data);
         setShowMergePrompt(true);
         toast.success('Resume parsed successfully!');
       }
