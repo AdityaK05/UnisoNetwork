@@ -13,6 +13,8 @@ async function migrate() {
   const faceVerificationSQL = fs.readFileSync(faceVerificationPath, 'utf-8');
   const profileFieldsPath = path.join(__dirname, 'add-profile-fields.sql');
   const profileFieldsSQL = fs.readFileSync(profileFieldsPath, 'utf-8');
+  const studentInfoPath = path.join(__dirname, 'add-student-info.sql');
+  const studentInfoSQL = fs.readFileSync(studentInfoPath, 'utf-8');
   
   try {
     console.log('Running main schema migration...');
@@ -26,6 +28,10 @@ async function migrate() {
     console.log('Running profile fields migration...');
     await pool.query(profileFieldsSQL);
     console.log('✅ Profile fields columns added successfully.');
+    
+    console.log('Running student info migration...');
+    await pool.query(studentInfoSQL);
+    console.log('✅ Student info columns added successfully.');
     
     console.log('✅ Database migrated successfully.');
   } catch (err) {

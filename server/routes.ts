@@ -494,13 +494,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Store student details for ID verification
       if (rollNumber && collegeName) {
-        await pool.query(
-          `UPDATE users SET 
-           roll_number = $1, 
-           college_name = $2
-           WHERE id = $3`,
-          [rollNumber, collegeName, user.id]
-        );
+        try {
+          await pool.query(
+            `UPDATE users SET 
+             roll_number = $1, 
+             college_name = $2
+             WHERE id = $3`,
+            [rollNumber, collegeName, user.id]
+          );
+        } catch (updateErr) {
+          console.warn('Could not update student info:', (updateErr as Error).message);
+          // Don't fail signup if student info update fails
+        }
       }
 
       // Generate JWT token
