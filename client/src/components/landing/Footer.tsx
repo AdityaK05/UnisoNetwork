@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from '../../hooks/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,6 +39,10 @@ export default function Footer({
   brandName = "UNiSO",
   brandSlogan = "Your campus. Your people. Your space. The ultimate social hub for college life.",
 }: FooterProps) {
+  const { user } = useAuth();
+  // Only show newsletter signup if user is NOT logged in
+  const shouldShowNewsletter = showNewsletter && !user;
+
   // Define the linkSections as a tuple array using the props
   const linkSections: [string, LinkItem[]][] = [
     ["Explore", quickLinks],
@@ -57,7 +62,7 @@ export default function Footer({
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-primary/10 rounded-full filter blur-3xl" />
 
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 relative z-10">
-        {showNewsletter && (
+        {shouldShowNewsletter && (
           <div className="mb-16 bg-white/10 backdrop-blur-sm rounded-3xl p-8 md:p-10 border border-white/20 shadow-lg">
             <div className="md:flex md:items-center md:justify-between">
               <div className="max-w-2xl mb-8 md:mb-0 md:mr-8">
