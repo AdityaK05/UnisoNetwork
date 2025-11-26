@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import MainLayout from '@/components/layout/MainLayout';
-import { Edit2, Save, X, Plus, Trash2, Download, Star, GitBranch, ExternalLink } from 'lucide-react';
+import { Edit2, Save, X, Plus, Trash2, Download, Star, GitBranch, ExternalLink, Upload, CheckCircle } from 'lucide-react';
 
 interface UserProfile {
   name?: string;
@@ -41,6 +41,9 @@ const Profile: React.FC = () => {
   const [formData, setFormData] = useState<UserProfile>({});
   const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
   const [loadingRepos, setLoadingRepos] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [resumePreview, setResumePreview] = useState<any>(null);
+  const [showMergePrompt, setShowMergePrompt] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -102,6 +105,74 @@ const Profile: React.FC = () => {
     } finally {
       setLoadingRepos(false);
     }
+  };
+
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formDataObj = new FormData();
+    formDataObj.append('resume', file);
+
+    try {
+      const { data } = await api.post('/api/users/upload-resume', formDataObj, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (data.parsedResume) {
+        setResumePreview(data.parsedResume);
+        setShowMergePrompt(true);
+        toast.success('Resume parsed successfully!');
+      }
+    } catch (error: any) {
+      console.error('Error uploading resume:', error);
+      toast.error('Failed to parse resume');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const mergeResumeData = (overwrite = false) => {
+    if (!resumePreview) return;
+
+    setFormData(prev => {
+      const merged = { ...prev };
+      
+      // Merge each field with option to overwrite or append
+      if (resumePreview.name && (!prev.name || overwrite)) merged.name = resumePreview.name;
+      if (resumePreview.email && (!prev.email || overwrite)) merged.email = resumePreview.email;
+      if (resumePreview.phone && (!prev.phone || overwrite)) merged.phone = resumePreview.phone;
+      if (resumePreview.summary && (!prev.summary || overwrite)) merged.summary = resumePreview.summary;
+
+      // For arrays, append or overwrite
+      if (resumePreview.skills?.length) {
+        merged.skills = overwrite 
+          ? resumePreview.skills 
+          : Array.from(new Set([...(prev.skills || []), ...resumePreview.skills]));
+      }
+      if (resumePreview.experience?.length) {
+        merged.experience = overwrite
+          ? resumePreview.experience
+          : [...(prev.experience || []), ...resumePreview.experience];
+      }
+      if (resumePreview.education?.length) {
+        merged.education = overwrite
+          ? resumePreview.education
+          : [...(prev.education || []), ...resumePreview.education];
+      }
+      if (resumePreview.projects?.length) {
+        merged.projects = overwrite
+          ? resumePreview.projects
+          : [...(prev.projects || []), ...resumePreview.projects];
+      }
+
+      return merged;
+    });
+
+    setResumePreview(null);
+    setShowMergePrompt(false);
+    toast.success('Resume data merged into profile!');
   };
 
   const handleSaveProfile = async () => {
@@ -216,6 +287,82 @@ const Profile: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
+              {/* Resume Upload */}
+              <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl shadow-md p-6 border-2 border-dashed border-purple-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">📄 Resume</h2>
+                    <p className="text-sm text-gray-600 mt-1">Upload your resume to auto-fill your profile details</p>
+                  </div>
+                  <Upload size={32} className="text-purple-500 opacity-50" />
+                </div>
+                
+                {!isEditing ? (
+                  <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-purple-300 rounded-lg cursor-pointer hover:bg-purple-100/50 transition">
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleResumeUpload}
+                      disabled={uploading}
+                      className="hidden"
+                    />
+                    <Upload size={32} className="text-purple-400 mb-2" />
+                    <span className="text-purple-600 font-semibold">
+                      {uploading ? 'Parsing resume...' : 'Click to upload resume (PDF, DOC, DOCX)'}
+                    </span>
+                  </label>
+                ) : (
+                  <p className="text-gray-600 text-sm italic">Resume upload disabled while editing. Save changes first.</p>
+                )}
+              </div>
+
+              {/* Resume Merge Prompt Modal */}
+              {showMergePrompt && resumePreview && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+                    <h3 className="text-2xl font-bold text-gray-800 mb-4">Resume Parsed Successfully! 🎉</h3>
+                    <div className="bg-blue-50 p-4 rounded-lg mb-6 max-h-64 overflow-y-auto">
+                      {resumePreview.name && <p><strong>Name:</strong> {resumePreview.name}</p>}
+                      {resumePreview.email && <p><strong>Email:</strong> {resumePreview.email}</p>}
+                      {resumePreview.phone && <p><strong>Phone:</strong> {resumePreview.phone}</p>}
+                      {resumePreview.skills?.length > 0 && (
+                        <p><strong>Skills:</strong> {resumePreview.skills.slice(0, 3).join(', ')}...</p>
+                      )}
+                      {resumePreview.experience?.length > 0 && (
+                        <p><strong>Experience:</strong> {resumePreview.experience.length} entries</p>
+                      )}
+                      {resumePreview.education?.length > 0 && (
+                        <p><strong>Education:</strong> {resumePreview.education.length} entries</p>
+                      )}
+                    </div>
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => mergeResumeData(false)}
+                        className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold hover:opacity-90"
+                      >
+                        <CheckCircle size={16} className="mr-2 inline" />
+                        Merge & Append
+                      </Button>
+                      <Button
+                        onClick={() => mergeResumeData(true)}
+                        className="flex-1 bg-orange-500 text-white font-semibold hover:opacity-90"
+                      >
+                        Overwrite
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setShowMergePrompt(false);
+                          setResumePreview(null);
+                        }}
+                        className="flex-1 bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Summary */}
               <div className="bg-white rounded-xl shadow p-6">
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">About</h2>
