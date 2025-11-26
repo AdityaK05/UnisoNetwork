@@ -7,12 +7,7 @@ import { useAuth } from '../../hooks/AuthContext';
 
 
 export default function Hero() {
-  const { user, loading } = useAuth();
-
-  // Hide hero section if user is logged in or still loading
-  if (loading || user) {
-    return null;
-  }
+  const { user } = useAuth();
 
   return (
     <section className="relative pt-28 pb-24 md:pt-36 md:pb-32 overflow-hidden bg-gradient-to-br from-[#A066F5] via-[#649DF5] to-[#35D6F5] text-white">
