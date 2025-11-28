@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Briefcase,
   BookOpen,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '../../hooks/AuthContext';
@@ -38,6 +39,14 @@ export default function Navbar() {
   const isHomePage = location === "/";
 
   const navLinks = [
+    {
+      name: "BUDDY AI",
+      path: "/buddy",
+      icon: <Sparkles className="h-4 w-4 md:mr-1.5 text-black" />,
+      mobileIcon: <Sparkles className="h-5 w-5 mr-3 text-black" />,
+      activeColor: "text-primary",
+      hoverBg: "hover:bg-white",
+    },
     {
       name: "Community",
       path: "/groups",

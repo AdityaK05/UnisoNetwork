@@ -23,6 +23,7 @@ import Profile from "@/pages/profile";
 import CreateGroupPage from "@/pages/create-group";
 import MyGroupsPage from "@/pages/my-groups";
 import AdminJobPortal from "@/pages/admin-jobs";
+import BuddyPage from "@/pages/buddy";
 
 type ProtectedRouteProps = {
   component: React.FC;
@@ -48,6 +49,7 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/buddy" component={() => <ProtectedRoute component={BuddyPage} />} />
       <Route path="/internships" component={() => <ProtectedRoute component={InternshipsPage} />} />
   <Route path="/groups" component={() => <ProtectedRoute component={GroupsPage} />} />
   <Route path="/create-group" component={() => <ProtectedRoute component={CreateGroupPage} />} />
