@@ -51,7 +51,7 @@ export class CaptchaService {
         }),
       });
 
-      const data: RecaptchaResponse = await response.json();
+      const data = (await response.json()) as RecaptchaResponse;
 
       // Check if verification succeeded
       if (!data.success) {

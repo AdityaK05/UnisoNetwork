@@ -13,6 +13,7 @@ import { isValidCollegeEmail, getCollegeEmailError } from './utils/collegeEmailV
 // import { verifyFaceMatch, loadFaceApiModels } from './services/faceVerification';
 import { parseResume } from './services/resumeParser';
 import { verifyAdminOrCoordinator } from './middleware/adminAuth';
+import { registerBuddyRoutes } from './buddyRoutes_enhanced';
 import multer from 'multer';
 import path from 'path';
 
@@ -1892,6 +1893,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Register BUDDY routes
+  await registerBuddyRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
