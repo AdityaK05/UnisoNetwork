@@ -44,6 +44,8 @@ const Profile: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [resumePreview, setResumePreview] = useState<any>(null);
   const [showMergePrompt, setShowMergePrompt] = useState(false);
+  const [uploadedResumeFile, setUploadedResumeFile] = useState<File | null>(null);
+  const [resumeFileName, setResumeFileName] = useState<string>('');
 
   useEffect(() => {
     if (user) {
@@ -112,6 +114,9 @@ const Profile: React.FC = () => {
     if (!file) return;
 
     setUploading(true);
+    setUploadedResumeFile(file);
+    setResumeFileName(file.name);
+    
     const formDataObj = new FormData();
     formDataObj.append('resume', file);
 
@@ -122,12 +127,43 @@ const Profile: React.FC = () => {
 
       if (data.data) {
         setResumePreview(data.data);
+        
+        // Auto-fill form data immediately with parsed resume
+        setFormData(prev => {
+          const merged = { ...prev };
+          
+          // Merge each field
+          if (data.data.name && !prev.name) merged.name = data.data.name;
+          if (data.data.email && !prev.email) merged.email = data.data.email;
+          if (data.data.phone && !prev.phone) merged.phone = data.data.phone;
+          if (data.data.summary && !prev.summary) merged.summary = data.data.summary;
+
+          // For arrays, append without duplicates
+          if (data.data.skills?.length) {
+            merged.skills = Array.from(new Set([...(prev.skills || []), ...data.data.skills]));
+          }
+          if (data.data.experience?.length) {
+            merged.experience = [...(prev.experience || []), ...data.data.experience];
+          }
+          if (data.data.education?.length) {
+            merged.education = [...(prev.education || []), ...data.data.education];
+          }
+          if (data.data.projects?.length) {
+            merged.projects = [...(prev.projects || []), ...data.data.projects];
+          }
+
+          return merged;
+        });
+
+        // Show merge prompt to confirm/adjust
         setShowMergePrompt(true);
-        toast.success('Resume parsed successfully!');
+        toast.success('Resume parsed and auto-filled! Review the details below.');
       }
     } catch (error: any) {
       console.error('Error uploading resume:', error);
       toast.error('Failed to parse resume');
+      setUploadedResumeFile(null);
+      setResumeFileName('');
     } finally {
       setUploading(false);
     }
@@ -297,6 +333,31 @@ const Profile: React.FC = () => {
                   <Upload size={32} className="text-purple-500 opacity-50" />
                 </div>
                 
+                {/* Show uploaded resume file if exists */}
+                {uploadedResumeFile && resumeFileName && (
+                  <div className="bg-white rounded-lg p-4 mb-4 border border-green-300 bg-green-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle size={24} className="text-green-500" />
+                        <div>
+                          <p className="font-semibold text-gray-800">Resume Uploaded</p>
+                          <p className="text-sm text-gray-600">{resumeFileName}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setUploadedResumeFile(null);
+                          setResumeFileName('');
+                          setResumePreview(null);
+                        }}
+                        className="text-red-500 hover:text-red-700 font-semibold"
+                      >
+                        ✕ Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 {!isEditing ? (
                   <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-purple-300 rounded-lg cursor-pointer hover:bg-purple-100/50 transition">
                     <input
@@ -320,34 +381,37 @@ const Profile: React.FC = () => {
               {showMergePrompt && resumePreview && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                   <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
-                    <h3 className="text-2xl font-bold text-gray-800 mb-4">Resume Parsed Successfully! 🎉</h3>
-                    <div className="bg-blue-50 p-4 rounded-lg mb-6 max-h-64 overflow-y-auto">
-                      {resumePreview.name && <p><strong>Name:</strong> {resumePreview.name}</p>}
-                      {resumePreview.email && <p><strong>Email:</strong> {resumePreview.email}</p>}
-                      {resumePreview.phone && <p><strong>Phone:</strong> {resumePreview.phone}</p>}
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">✅ Resume Parsed Successfully!</h3>
+                    <p className="text-sm text-gray-600 mb-6">Your profile details have been auto-filled with the resume data below:</p>
+                    <div className="bg-blue-50 p-4 rounded-lg mb-6 max-h-64 overflow-y-auto space-y-2">
+                      {resumePreview.name && <p><strong>👤 Name:</strong> {resumePreview.name}</p>}
+                      {resumePreview.email && <p><strong>📧 Email:</strong> {resumePreview.email}</p>}
+                      {resumePreview.phone && <p><strong>📱 Phone:</strong> {resumePreview.phone}</p>}
+                      {resumePreview.summary && <p><strong>📝 Summary:</strong> {resumePreview.summary.substring(0, 50)}...</p>}
                       {resumePreview.skills?.length > 0 && (
-                        <p><strong>Skills:</strong> {resumePreview.skills.slice(0, 3).join(', ')}...</p>
+                        <p><strong>🛠️ Skills:</strong> {resumePreview.skills.length} found ({resumePreview.skills.slice(0, 3).join(', ')}...)</p>
                       )}
                       {resumePreview.experience?.length > 0 && (
-                        <p><strong>Experience:</strong> {resumePreview.experience.length} entries</p>
+                        <p><strong>💼 Experience:</strong> {resumePreview.experience.length} entries found</p>
                       )}
                       {resumePreview.education?.length > 0 && (
-                        <p><strong>Education:</strong> {resumePreview.education.length} entries</p>
+                        <p><strong>🎓 Education:</strong> {resumePreview.education.length} entries found</p>
+                      )}
+                      {resumePreview.projects?.length > 0 && (
+                        <p><strong>🚀 Projects:</strong> {resumePreview.projects.length} entries found</p>
                       )}
                     </div>
                     <div className="flex gap-3">
                       <Button
-                        onClick={() => mergeResumeData(false)}
+                        onClick={() => {
+                          setShowMergePrompt(false);
+                          setResumePreview(null);
+                          toast.success('Profile updated with resume data!');
+                        }}
                         className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold hover:opacity-90"
                       >
                         <CheckCircle size={16} className="mr-2 inline" />
-                        Merge & Append
-                      </Button>
-                      <Button
-                        onClick={() => mergeResumeData(true)}
-                        className="flex-1 bg-orange-500 text-white font-semibold hover:opacity-90"
-                      >
-                        Overwrite
+                        Done
                       </Button>
                       <Button
                         onClick={() => {
@@ -356,7 +420,7 @@ const Profile: React.FC = () => {
                         }}
                         className="flex-1 bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300"
                       >
-                        Cancel
+                        Close
                       </Button>
                     </div>
                   </div>
