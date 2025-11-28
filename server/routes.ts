@@ -89,8 +89,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: 'Invalid credentials' });
       const valid = await bcrypt.compare(password, user.password_hash);
       if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
+      
+      // Get full user data including role for faster client-side rendering
+      const client = await pool.connect();
+      let userWithRole = user;
+      try {
+        const result = await client.query(
+          'SELECT id, name, email, avatar_url, role FROM users WHERE id = $1',
+          [user.id]
+        );
+        if (result.rows[0]) {
+          userWithRole = result.rows[0];
+        }
+      } finally {
+        client.release();
+      }
+      
       const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-      res.json({ token, user: { id: user.id, name: user.name, email: user.email, avatar_url: user.avatar_url } });
+      res.json({ 
+        token, 
+        user: { 
+          id: userWithRole.id, 
+          name: userWithRole.name, 
+          email: userWithRole.email, 
+          avatar_url: userWithRole.avatar_url,
+          role: userWithRole.role 
+        } 
+      });
     } catch (err) {
       console.error('Login failed:', err);
       if (err instanceof Error && err.stack) {

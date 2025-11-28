@@ -10,6 +10,7 @@ const Login: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const [, setLocation] = useLocation();
     const { login } = useAuth();
     const [showPhoneVerification, setShowPhoneVerification] = useState(false);
@@ -27,7 +28,9 @@ const Login: React.FC = () => {
 
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (loading) return; // Prevent double submission
         setError('');
+        setLoading(true);
         try {
             const response = await authService.login({ email, password });
             
@@ -41,6 +44,7 @@ const Login: React.FC = () => {
             // Optional: Check phone verification status in background (non-blocking)
             checkPhoneVerification().catch(err => console.warn('Phone verification check failed:', err));
         } catch (err: unknown) {
+            setLoading(false);
             if (err instanceof Error) {
                 setError(err.message);
             } else {
@@ -107,33 +111,45 @@ const Login: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                         <motion.input
                             type="email"
-                            className="w-full px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
+                            disabled={loading}
+                            className="w-full px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                             placeholder="Enter your email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            whileFocus={{ scale: 1.03, boxShadow: '0 0 0 2px #6C63FF33' }}
+                            whileFocus={loading ? {} : { scale: 1.03, boxShadow: '0 0 0 2px #6C63FF33' }}
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                         <motion.input
                             type="password"
-                            className="w-full px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none"
+                            disabled={loading}
+                            className="w-full px-4 py-2 rounded-full border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                             placeholder="Enter your password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            whileFocus={{ scale: 1.03, boxShadow: '0 0 0 2px #6C63FF33' }}
+                            whileFocus={loading ? {} : { scale: 1.03, boxShadow: '0 0 0 2px #6C63FF33' }}
                         />
                     </div>
                     <motion.button
                         type="submit"
-                        className="w-full py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold rounded-full hover:opacity-90 transition"
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.98 }}
+                        disabled={loading}
+                        className={`w-full py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold rounded-full transition ${
+                            loading ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-90'
+                        }`}
+                        whileHover={loading ? {} : { scale: 1.04 }}
+                        whileTap={loading ? {} : { scale: 0.98 }}
                     >
-                        Login
+                        {loading ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                                Logging in...
+                            </span>
+                        ) : (
+                            'Login'
+                        )}
                     </motion.button>
                 </motion.form>
 
