@@ -34,6 +34,8 @@ const BuddyChatV2: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [creatingChat, setCreatingChat] = useState(false);
+  const [loadingChats, setLoadingChats] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,7 +53,10 @@ const BuddyChatV2: React.FC = () => {
 
   const loadChats = async () => {
     try {
+      setLoadingChats(true);
+      console.log('Loading chats...');
       const { data } = await api.get('/api/buddy/chats');
+      console.log('Chats loaded:', data);
       setChats(data.data || []);
       
       if (data.data && data.data.length > 0 && !currentChat) {
@@ -61,7 +66,11 @@ const BuddyChatV2: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error loading chats:', error);
-      toast.error('Failed to load chats');
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to load chats';
+      console.error('Full error response:', error.response?.data || error);
+      toast.error(errorMsg);
+    } finally {
+      setLoadingChats(false);
     }
   };
 
@@ -77,8 +86,23 @@ const BuddyChatV2: React.FC = () => {
 
   const createNewChat = async () => {
     try {
+      setCreatingChat(true);
       const title = prompt('Chat title (optional):') || `Chat ${new Date().toLocaleDateString()}`;
+      
+      if (!title) {
+        setCreatingChat(false);
+        return;
+      }
+      
+      console.log('Creating chat with title:', title);
+      
       const { data } = await api.post('/api/buddy/chats', { title });
+      
+      console.log('Chat created:', data);
+      
+      if (!data.data) {
+        throw new Error('No chat data returned from server');
+      }
       
       const newChat = data.data;
       setChats([newChat, ...chats]);
@@ -87,7 +111,11 @@ const BuddyChatV2: React.FC = () => {
       toast.success('New chat created');
     } catch (error: any) {
       console.error('Error creating chat:', error);
-      toast.error('Failed to create chat');
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to create chat';
+      console.error('Full error:', error.response?.data || error);
+      toast.error(errorMsg);
+    } finally {
+      setCreatingChat(false);
     }
   };
 
@@ -191,6 +219,17 @@ const BuddyChatV2: React.FC = () => {
     }
   };
 
+  if (loadingChats) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <Loader className="w-8 h-8 animate-spin mx-auto mb-4 text-purple-600" />
+          <p className="text-gray-600">Loading your chats...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!currentChat && chats.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -200,11 +239,15 @@ const BuddyChatV2: React.FC = () => {
           <p className="text-gray-600 mb-4">Create a new chat to begin your conversation with AI</p>
           <Button 
             onClick={createNewChat}
+            disabled={creatingChat}
             className="bg-purple-600 hover:bg-purple-700"
           >
             <Plus className="w-4 h-4 mr-2" />
-            New Chat
+            {creatingChat ? 'Creating...' : 'New Chat'}
           </Button>
+          <p className="text-xs text-gray-500 mt-4">
+            💡 Check browser console (F12) if you see errors
+          </p>
         </div>
       </div>
     );
@@ -217,10 +260,11 @@ const BuddyChatV2: React.FC = () => {
         <div className="p-4 border-b border-gray-200">
           <Button 
             onClick={createNewChat}
-            className="w-full bg-purple-600 hover:bg-purple-700"
+            disabled={creatingChat}
+            className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
           >
             <Plus className="w-4 h-4 mr-2" />
-            New Chat
+            {creatingChat ? 'Creating...' : 'New Chat'}
           </Button>
         </div>
 
