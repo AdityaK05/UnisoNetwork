@@ -31,6 +31,17 @@ app.get('/', (req, res) => {
   res.send('UNiSO API is running!');
 });
 
+// Diagnostic endpoint (remove in production)
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    nodeEnv: process.env.NODE_ENV,
+    hasDatabase: Boolean(process.env.DATABASE_URL),
+    port: process.env.PORT || 5000,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // CORS configuration for development and production
 const allowedOrigins = [
   'http://localhost:5173',
