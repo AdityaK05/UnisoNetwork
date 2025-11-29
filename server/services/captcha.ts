@@ -61,8 +61,6 @@ export class CaptchaService {
           message: 'CAPTCHA verification failed',
         };
       }
-
-      // Check score (higher is better, 0.0 = bot, 1.0 = human)
       if (data.score && data.score < this.MIN_SCORE) {
         console.warn(`⚠️  Low CAPTCHA score: ${data.score} (threshold: ${this.MIN_SCORE})`);
         return {
