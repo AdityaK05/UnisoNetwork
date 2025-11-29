@@ -145,3 +145,52 @@ INSERT INTO companies (name, logo_url, website, description) VALUES
 ('Netflix', '/logos/netflix.png', 'https://netflix.com', 'Entertainment streaming and content platform'),
 ('Amazon', '/logos/amazon.png', 'https://amazon.com', 'E-commerce, cloud computing, and digital services'),
 ('Apple', '/logos/apple.png', 'https://apple.com', 'Consumer electronics, software, and services');
+
+-- BUDDY AI Chat Tables
+CREATE TABLE IF NOT EXISTS buddy_chats (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    chat_type VARCHAR(50) DEFAULT 'general',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS buddy_messages (
+    id SERIAL PRIMARY KEY,
+    chat_id INTEGER NOT NULL REFERENCES buddy_chats(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    response TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS buddy_documents (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    chat_id INTEGER REFERENCES buddy_chats(id) ON DELETE SET NULL,
+    filename VARCHAR(255) NOT NULL,
+    file_path TEXT NOT NULL,
+    file_type VARCHAR(50),
+    file_size INTEGER,
+    vector_id VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS buddy_skills (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    skill_name VARCHAR(100) NOT NULL,
+    proficiency_level VARCHAR(50),
+    extracted_from TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for BUDDY tables
+CREATE INDEX IF NOT EXISTS idx_buddy_chats_user_id ON buddy_chats(user_id);
+CREATE INDEX IF NOT EXISTS idx_buddy_chats_created_at ON buddy_chats(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_buddy_messages_chat_id ON buddy_messages(chat_id);
+CREATE INDEX IF NOT EXISTS idx_buddy_messages_user_id ON buddy_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_buddy_documents_user_id ON buddy_documents(user_id);
+CREATE INDEX IF NOT EXISTS idx_buddy_documents_chat_id ON buddy_documents(chat_id);
+CREATE INDEX IF NOT EXISTS idx_buddy_skills_user_id ON buddy_skills(user_id);
