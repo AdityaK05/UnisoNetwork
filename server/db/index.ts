@@ -30,9 +30,39 @@ export async function testConnection() {
 // Also export a legacy pool for compatibility
 import { Pool } from 'pg';
 
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  throw new Error('DATABASE_URL is required');
+}
+
+// For Render PostgreSQL with SSL requirement
+const isProduction = process.env.NODE_ENV === 'production' || dbUrl.includes('render.com') || dbUrl.includes('neon.tech');
+
+console.log(`📦 Database URL found. Production mode: ${isProduction}`);
+console.log(`📦 Attempting connection with SSL: ${isProduction ? 'enabled' : 'disabled'}`);
+
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  connectionString: dbUrl,
+  ssl: isProduction 
+    ? { rejectUnauthorized: false }
+    : false,
+});
+
+pool.on('error', (err) => {
+  console.error('❌ Unexpected error on idle client', err);
+});
+
+pool.on('connect', () => {
+  console.log('✅ Database pool connected');
+});
+
+// Test connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('❌ Initial database connection test failed:', err.message);
+  } else {
+    console.log('✅ Database connection test successful');
+  }
 });
 
 export default pool;
