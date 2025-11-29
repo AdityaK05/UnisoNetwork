@@ -35,34 +35,47 @@ if (!dbUrl) {
   throw new Error('DATABASE_URL is required');
 }
 
-// For Render PostgreSQL with SSL requirement
-const isProduction = process.env.NODE_ENV === 'production' || dbUrl.includes('render.com') || dbUrl.includes('neon.tech');
+console.log(`📦 Database URL exists: ${dbUrl ? 'YES' : 'NO'}`);
+console.log(`📦 NODE_ENV: ${process.env.NODE_ENV}`);
 
-console.log(`📦 Database URL found. Production mode: ${isProduction}`);
-console.log(`📦 Attempting connection with SSL: ${isProduction ? 'enabled' : 'disabled'}`);
+// Ensure SSL is enabled in connection URL
+let connectionString = dbUrl;
+if (!connectionString.includes('sslmode')) {
+  connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
+  console.log('📦 Adding sslmode=require to connection string');
+}
+
+console.log(`📦 Final connection string (URL only): postgresql://***`);
 
 export const pool = new Pool({
-  connectionString: dbUrl,
-  ssl: isProduction 
-    ? { rejectUnauthorized: false }
-    : false,
+  connectionString: connectionString,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  // Connection timeout settings
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 10000,
+  max: 20,
 });
 
 pool.on('error', (err) => {
-  console.error('❌ Unexpected error on idle client', err);
+  console.error('❌ Pool error:', err.message);
 });
 
 pool.on('connect', () => {
-  console.log('✅ Database pool connected');
+  console.log('✅ New client connected to pool');
 });
 
-// Test connection
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('❌ Initial database connection test failed:', err.message);
-  } else {
-    console.log('✅ Database connection test successful');
+// Test connection immediately
+(async () => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW()');
+    client.release();
+    console.log('✅ Database pool test query successful:', result.rows[0]);
+  } catch (err: any) {
+    console.error('❌ Database pool test query failed:', err.message);
   }
-});
+})();
 
 export default pool;
