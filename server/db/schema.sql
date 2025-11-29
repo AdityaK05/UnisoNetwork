@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     two_factor_secret TEXT,
     two_factor_enabled BOOLEAN DEFAULT FALSE,
     two_factor_backup_codes TEXT[],
+    role VARCHAR(50) DEFAULT 'student',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

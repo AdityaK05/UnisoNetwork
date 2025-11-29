@@ -144,6 +144,16 @@ app.use((req, res, next) => {
           log("buddy database tables created");
         }
       }
+
+      // Run migrations to add missing columns
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const roleColumnPath = path.join(__dirname, "db", "add-role-column.sql");
+      if (fs.existsSync(roleColumnPath)) {
+        const roleColumnSql = fs.readFileSync(roleColumnPath, "utf-8");
+        await pool.query(roleColumnSql);
+        log("role column migration completed");
+      }
     } catch (err) {
       console.error("Failed ensuring database schema:", err);
     }

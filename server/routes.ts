@@ -116,11 +116,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       
-      // Get user data directly from database to include role
+      // Get user data directly from database
       const client = await pool.connect();
       try {
         const result = await client.query(
-          'SELECT id, name, email, avatar_url, role, created_at FROM users WHERE id = $1',
+          "SELECT id, name, email, avatar_url, COALESCE(role, 'student') as role, created_at FROM users WHERE id = $1",
           [userId]
         );
         
@@ -134,13 +134,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: user.name,
           email: user.email,
           avatar_url: user.avatar_url,
-          role: user.role || 'student',
+          role: user.role,
           created_at: user.created_at,
         });
       } finally {
         client.release();
       }
     } catch (err) {
+      console.error('Error in /api/users/me:', err);
       res.status(500).json({ message: 'Error fetching current user', error: (err as Error).message });
     }
   });
