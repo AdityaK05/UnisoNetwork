@@ -130,6 +130,20 @@ app.use((req, res, next) => {
         await pool.query(schemaSql);
         log("database schema created");
       }
+
+      // Check if buddy tables exist, if not create them
+      const buddyCheck = await pool.query("SELECT to_regclass('public.buddy_chats') as t");
+      const buddyChatsTable = buddyCheck.rows?.[0]?.t;
+      if (!buddyChatsTable) {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const buddySchemaPath = path.join(__dirname, "db", "add-buddy-tables.sql");
+        if (fs.existsSync(buddySchemaPath)) {
+          const buddySchemaSql = fs.readFileSync(buddySchemaPath, "utf-8");
+          await pool.query(buddySchemaSql);
+          log("buddy database tables created");
+        }
+      }
     } catch (err) {
       console.error("Failed ensuring database schema:", err);
     }

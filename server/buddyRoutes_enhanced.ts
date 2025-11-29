@@ -95,9 +95,9 @@ export async function registerBuddyRoutes(app: Express): Promise<void> {
       );
 
       res.json({ success: true, data: result.rows });
-    } catch (error) {
-      console.error('Error fetching chats:', error);
-      res.status(500).json({ success: false, message: 'Failed to fetch chats' });
+    } catch (error: any) {
+      console.error('Error fetching chats:', error.message, error);
+      res.status(500).json({ success: false, message: 'Failed to fetch chats', error: error.message });
     }
   });
 
@@ -121,9 +121,9 @@ export async function registerBuddyRoutes(app: Express): Promise<void> {
       );
 
       res.json({ success: true, data: result.rows[0] });
-    } catch (error) {
-      console.error('Error creating chat:', error);
-      res.status(500).json({ success: false, message: 'Failed to create chat' });
+    } catch (error: any) {
+      console.error('Error creating chat:', error.message, error);
+      res.status(500).json({ success: false, message: 'Failed to create chat', error: error.message });
     }
   });
 
