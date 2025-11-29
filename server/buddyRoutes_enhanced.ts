@@ -87,7 +87,7 @@ export async function registerBuddyRoutes(app: Express): Promise<void> {
   app.get('/api/buddy/chats', authMiddleware, async (req: AuthRequest, res: Response) => {
     try {
       const result = await pool.query(
-        `SELECT id, title, chat_type, created_at, updated_at, last_message_at
+        `SELECT id, title, chat_type, created_at, updated_at
          FROM buddy_chats
          WHERE user_id = $1
          ORDER BY updated_at DESC`,
