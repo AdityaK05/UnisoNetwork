@@ -16,6 +16,7 @@ import { verifyAdminOrCoordinator } from './middleware/adminAuth';
 import { registerBuddyRoutes } from './buddyRoutes_enhanced';
 import multer from 'multer';
 import path from 'path';
+import { updateProfileFromResume, extractProfileData } from './services/resumeProfileSync';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
@@ -1397,11 +1398,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log('✅ Resume parsed successfully for user', userId);
 
-        // Return parsed data
+        // Auto-update user profile with parsed resume data
+        try {
+          await updateProfileFromResume(userId, parsedData);
+          console.log('✅ User profile auto-updated with resume data');
+        } catch (syncError: any) {
+          console.warn('⚠️  Could not auto-update profile:', syncError.message);
+          // Don't fail the request if profile sync fails
+        }
+
+        // Extract profile data to return
+        const profileData = extractProfileData(parsedData);
+
+        // Return parsed data with profile information
         res.json({
           success: true,
-          message: 'Resume parsed successfully! ✅',
+          message: 'Resume parsed successfully! Profile auto-updated ✅',
           data: parsedData,
+          profile: profileData,
         });
       } catch (error: any) {
         console.error('❌ Unexpected error parsing resume:', error);

@@ -173,6 +173,14 @@ app.use((req, res, next) => {
         await pool.query(userColumnsSql);
         log("user columns migration completed");
       }
+
+      // Add jobs table
+      const jobsTablePath = path.join(__dirname, "db", "add-jobs-table-migration.sql");
+      if (fs.existsSync(jobsTablePath)) {
+        const jobsTableSql = fs.readFileSync(jobsTablePath, "utf-8");
+        await pool.query(jobsTableSql);
+        log("jobs table migration completed");
+      }
     } catch (err) {
       console.error("Failed ensuring database schema:", err);
     }

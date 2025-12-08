@@ -57,6 +57,27 @@ CREATE TABLE IF NOT EXISTS internships (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Jobs table
+CREATE TABLE IF NOT EXISTS jobs (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    company_id INTEGER REFERENCES companies(id) ON DELETE SET NULL,
+    location VARCHAR(100),
+    job_type VARCHAR(50), -- full-time, part-time, contract, remote
+    experience_level VARCHAR(50), -- entry, mid, senior
+    salary_min INTEGER,
+    salary_max INTEGER,
+    description TEXT,
+    requirements TEXT,
+    benefits TEXT,
+    apply_link TEXT,
+    posted_date DATE,
+    deadline DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Forum threads table (Real Talks)
 CREATE TABLE IF NOT EXISTS forum_threads (
     id SERIAL PRIMARY KEY,
