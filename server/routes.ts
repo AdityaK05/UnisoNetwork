@@ -1287,9 +1287,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allowedExtensions = ['.pdf', '.docx'];
       const ext = path.extname(file.originalname).toLowerCase();
       
+      console.log(`📄 Resume file filter: ${file.originalname}, MIME: ${file.mimetype}, Ext: ${ext}`);
+      
       if (allowedTypes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
         cb(null, true);
       } else {
+        console.error(`❌ Invalid resume file type. MIME: ${file.mimetype}, Ext: ${ext}`);
         cb(new Error('Invalid file type. Only PDF and DOCX files are allowed.'));
       }
     },
@@ -1299,7 +1302,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post(
     '/api/resume/upload',
     authMiddleware,
-    resumeUpload.single('resume'),
+    (req, res, next) => {
+      resumeUpload.single('resume')(req, res, (err) => {
+        if (err) {
+          console.error('❌ Multer error:', err.message);
+          return res.status(400).json({
+            success: false,
+            message: `File upload error: ${err.message}`,
+          });
+        }
+        next();
+      });
+    },
     async (req: AuthRequest, res: Response) => {
       try {
         const userId = req.user?.id;
@@ -1313,9 +1327,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get uploaded resume file
         const resumeFile = (req as any).file;
         if (!resumeFile) {
+          console.warn('⚠️ No file uploaded. Request body:', req.body);
+          console.warn('⚠️ Request headers:', req.headers);
           return res.status(400).json({ 
             success: false, 
-            message: 'Resume file is required. Please select a PDF or DOCX file.' 
+            message: 'Resume file is required. Please select a PDF or DOCX file and ensure it\'s attached to the request.' 
           });
         }
 
