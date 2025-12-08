@@ -1427,6 +1427,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // GET /api/profile - Get current user's profile
+  app.get('/api/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized. Please log in.',
+        });
+      }
+
+      const client = await pool.connect();
+      try {
+        const result = await client.query(
+          `SELECT 
+            id, name, email, avatar_url, phone_number, role, 
+            roll_number, college_name, course,
+            id_verification_status, face_verification_status,
+            id_verification_data, created_at, updated_at
+          FROM users WHERE id = $1`,
+          [userId]
+        );
+
+        if (result.rows.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: 'User not found',
+          });
+        }
+
+        res.json({
+          success: true,
+          profile: result.rows[0],
+        });
+      } finally {
+        client.release();
+      }
+    } catch (error: any) {
+      console.error('Error fetching profile:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch profile',
+        error: error.message,
+      });
+    }
+  });
+
   // PUT /api/users/profile - Update user profile with resume data
   app.put(
     '/api/users/profile',
@@ -1825,10 +1872,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const client = await pool.connect();
       try {
         let query = `
-          SELECT j.*, u.name as posted_by_name
+          SELECT j.*, c.name as company_name, u.name as posted_by_name
           FROM jobs j
-          LEFT JOIN users u ON j.posted_by = u.id
-          WHERE j.status = 'Active'
+          LEFT JOIN companies c ON j.company_id = c.id
+          LEFT JOIN users u ON j.created_by = u.id
+          WHERE j.is_active = true
         `;
         const params: any[] = [];
         let paramIndex = 1;
@@ -1846,12 +1894,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         if (search) {
-          query += ` AND (j.title ILIKE $${paramIndex} OR j.company_name ILIKE $${paramIndex} OR j.description ILIKE $${paramIndex})`;
+          query += ` AND (j.title ILIKE $${paramIndex} OR COALESCE(c.name, '') ILIKE $${paramIndex} OR j.description ILIKE $${paramIndex})`;
           params.push(`%${search}%`);
           paramIndex++;
         }
 
-        query += ' ORDER BY j.posted_at DESC';
+        query += ' ORDER BY j.created_at DESC';
 
         const result = await client.query(query, params);
 
@@ -1867,6 +1915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch jobs',
+        error: error.message,
       });
     }
   });
