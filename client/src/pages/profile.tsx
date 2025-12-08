@@ -121,9 +121,8 @@ const Profile: React.FC = () => {
     formDataObj.append('resume', file);
 
     try {
-      const { data } = await api.post('/api/resume/upload', formDataObj, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      // Don't manually set Content-Type header - let axios handle it
+      const { data } = await api.post('/api/resume/upload', formDataObj);
 
       if (data.data) {
         setResumePreview(data.data);
