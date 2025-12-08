@@ -15,6 +15,13 @@ CREATE TABLE IF NOT EXISTS users (
     two_factor_enabled BOOLEAN DEFAULT FALSE,
     two_factor_backup_codes TEXT[],
     role VARCHAR(50) DEFAULT 'student',
+    roll_number VARCHAR(50),
+    college_name VARCHAR(200),
+    course VARCHAR(100),
+    id_verification_attempts INTEGER DEFAULT 0,
+    id_verification_status VARCHAR(50) DEFAULT 'pending',
+    id_verification_data JSONB,
+    face_verification_status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

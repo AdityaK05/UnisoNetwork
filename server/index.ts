@@ -165,6 +165,14 @@ app.use((req, res, next) => {
         await pool.query(roleColumnSql);
         log("role column migration completed");
       }
+
+      // Add other missing user columns
+      const userColumnsPath = path.join(__dirname, "db", "add-user-columns.sql");
+      if (fs.existsSync(userColumnsPath)) {
+        const userColumnsSql = fs.readFileSync(userColumnsPath, "utf-8");
+        await pool.query(userColumnsSql);
+        log("user columns migration completed");
+      }
     } catch (err) {
       console.error("Failed ensuring database schema:", err);
     }
